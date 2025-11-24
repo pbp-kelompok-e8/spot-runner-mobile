@@ -90,9 +90,7 @@ Akun event organizer memiliki relasi dengan:
 
 Pengguna ini dapat menambahkan event-event baru atau pun mengubah detail-detail pada event yang telah dibuat oleh pengguna sebelumnya. Selain itu, pengguna dengan role ini juga dapat membatalkan atau menghapus event-event yang tidak diinginkan. Pengguna ini juga memiliki akses untuk melihat event yang sedang berjalan, sudah selesai, ataupun dibatalkan. 
 
-### URL : 
-
 ### Design File Figma:
 https://www.figma.com/design/bPYWoCrt7XljkLbyVaHgRU/PBP-Kelompok?node-id=0-1&t=6whKcuuazAz6Wb6q-1
 
-
+### Download : 
