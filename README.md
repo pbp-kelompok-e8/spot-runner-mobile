@@ -98,3 +98,13 @@ https://www.figma.com/design/bPYWoCrt7XljkLbyVaHgRU/PBP-Kelompok?node-id=0-1&t=6
 [![Build Status](https://app.bitrise.io/app/ff81e75c-daaa-42bf-8f54-8bf4c7b28ff3/status.svg?token=Sw4g9rePx3dIL3A1k-w82A&branch=main)](https://app.bitrise.io/app/ff81e75c-daaa-42bf-8f54-8bf4c7b28ff3)
 
 Download aplikasi versi terbaru: [Download APK](https://app.bitrise.io/app/ff81e75c-daaa-42bf-8f54-8bf4c7b28ff3/installable-artifacts/cf8c59484098e501/public-install-page/dc29a84a0e8ffd7624dbdecb08b4652d)
+
+## Alur Pengintegrasian dengan Web Service
+### 1. Pengiriman request (Flutter)
+Flutter akan mengirimkan request http ke endpoint API Django tertentu (request bisa berupa GET ataupun POST).
+
+### 2. Penerimaan request (Django)
+Django yang menerima request akan mencocokannya dengan URL Routing dan menjalankan fungsi pada views untuk mengambil data yang diminta dari database. Data yang didapat akan diformat ke bentuk JSON dan Django akan mengirimnya kembali sebagai http response.
+
+### 3. Penerimaan respons (Flutter)
+Flutter akan menerima respons JSON tersebut. Jika status respon tersebut valid atau sukses, data yang diterima akan diubah menjadi model/objek Dart. Kemudian Flutter akan memperbarui UI sesuai dengan data yang diterima.
