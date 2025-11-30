@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:spot_runner_mobile/screens/menu.dart';
-// : Impor halaman NewsFormPage jika sudah dibuat
-// import 'package:football_news/screens/newslist_form.dart';
-// import 'package:football_news/screens/news_entry_list.dart';
+import 'package:spot_runner_mobile/core/screens/menu.dart';
+import 'package:spot_runner_mobile/features/auth/screens/login.dart';
+import 'package:pbp_django_auth/pbp_django_auth.dart';
+import 'package:provider/provider.dart';
 
 class LeftDrawer extends StatelessWidget {
   const LeftDrawer({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final request = context.watch<CookieRequest>();
+
     return Drawer(
       child: Column(
         children: [
@@ -39,7 +41,7 @@ class LeftDrawer extends StatelessWidget {
                   ),
                 ),
 
-                // ListTile lain
+                // ListTile Menu
                 ListTile(
                   leading: const Icon(Icons.home_outlined),
                   title: const Text('Home'),
@@ -53,14 +55,26 @@ class LeftDrawer extends StatelessWidget {
                 ListTile(
                   leading: const Icon(Icons.dashboard),
                   title: const Text('Dashboard'),
+                  onTap: () {
+                    // TODO: Navigate ke Dashboard
+                    Navigator.pop(context);
+                  },
                 ),
                 ListTile(
                   leading: const Icon(Icons.account_box),
                   title: const Text('Profile'),
+                  onTap: () {
+                    // TODO: Navigate ke Profile
+                    Navigator.pop(context);
+                  },
                 ),
                 ListTile(
                   leading: const Icon(Icons.shopping_bag_rounded),
                   title: const Text('Merchandise'),
+                  onTap: () {
+                    // TODO: Navigate ke Merchandise
+                    Navigator.pop(context);
+                  },
                 ),
               ],
             ),
@@ -69,25 +83,34 @@ class LeftDrawer extends StatelessWidget {
           // Bagian bawah (sticky)
           const Divider(),
 
-          // Tombol Sign Out atau Sign In
+          // Tombol Sign Out
           ListTile(
-            leading: Icon(Icons.logout, color: Colors.red),
-            title: Text(
+            leading: const Icon(Icons.logout, color: Colors.red),
+            title: const Text(
               "Sign Out",
               style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
             ),
-            onTap: () {
-              // TODO: Implementasi Logout
-            },
-          ),
-          ListTile(
-            leading: Icon(Icons.login, color: Colors.blue),
-            title: Text(
-              "Sign In",
-              style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold),
-            ),
-            onTap: () {
-              // TODO: Implementasi Logout
+            onTap: () async {
+              final response = await request.logout(
+                "http://localhost:8000/auth/logout/",
+              );
+              String message = response["message"];
+              if (context.mounted) {
+                if (response['status']) {
+                  String uname = response["username"];
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text("$message Sampai jumpa, $uname.")),
+                  );
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (context) => const LoginPage()),
+                  );
+                } else {
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text(message)));
+                }
+              }
             },
           ),
 
@@ -96,5 +119,4 @@ class LeftDrawer extends StatelessWidget {
       ),
     );
   }
-
 }

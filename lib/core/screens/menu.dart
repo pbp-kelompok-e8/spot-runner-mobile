@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 // Import drawer widget
-import 'package:spot_runner_mobile/widgets/left_drawer.dart';
+import 'package:spot_runner_mobile/core/widgets/left_drawer.dart';
 // Import the moved ItemCard and ItemHomepage
-import 'package:spot_runner_mobile/widgets/card.dart';
+import 'package:spot_runner_mobile/core/widgets/card.dart';
 
 class MyHomePage extends StatelessWidget {
   MyHomePage({super.key});
@@ -28,34 +28,33 @@ class MyHomePage extends StatelessWidget {
         // Judul aplikasi dengan teks putih dan tebal
         title: const Text(
           'Football News',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         backgroundColor: Theme.of(context).colorScheme.primary,
       ),
       // Tambahkan drawer dari versi kedua
-      drawer: LeftDrawer(),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            // InfoCard dari versi pertama
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                InfoCard(title: 'NPM', content: npm),
-                InfoCard(title: 'Name', content: nama),
-                InfoCard(title: 'Class', content: kelas),
-              ],
-            ),
+      drawer: const LeftDrawer(),
+      body: SingleChildScrollView(
+        // Tambahkan SingleChildScrollView di sini
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // InfoCard dari versi pertama
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  InfoCard(title: 'NPM', content: npm),
+                  InfoCard(title: 'Name', content: nama),
+                  InfoCard(title: 'Class', content: kelas),
+                ],
+              ),
 
-            const SizedBox(height: 16.0),
+              const SizedBox(height: 16.0),
 
-            Center(
-              child: Column(
+              // Menempatkan widget berikutnya di tengah halaman
+              Column(
                 children: [
                   const Padding(
                     padding: EdgeInsets.only(top: 16.0),
@@ -70,12 +69,16 @@ class MyHomePage extends StatelessWidget {
 
                   // Grid untuk menampilkan semua ItemCard
                   GridView.count(
-                    primary: true,
+                    primary:
+                        false, // Ubah ke false karena sudah ada SingleChildScrollView
                     padding: const EdgeInsets.all(20),
                     crossAxisSpacing: 10,
                     mainAxisSpacing: 10,
                     crossAxisCount: 3,
-                    shrinkWrap: true,
+                    shrinkWrap:
+                        true, // Penting agar GridView menyesuaikan tinggi
+                    physics:
+                        const NeverScrollableScrollPhysics(), // Disable scroll GridView, biar scroll dari SingleChildScrollView
 
                     children: items.map((ItemHomepage item) {
                       return ItemCard(item);
@@ -83,8 +86,8 @@ class MyHomePage extends StatelessWidget {
                   ),
                 ],
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -106,10 +109,7 @@ class InfoCard extends StatelessWidget {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            Text(
-              title,
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
+            Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 8.0),
             Text(content),
           ],
