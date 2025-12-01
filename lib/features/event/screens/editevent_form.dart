@@ -3,14 +3,16 @@ import 'package:intl/intl.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
-class EventFormPage extends StatefulWidget {
-  const EventFormPage({super.key});
+class EditEventFormPage extends StatefulWidget {
+  final Map<String, dynamic> event; 
+
+  const EditEventFormPage({super.key, required this.event});
 
   @override
-  State<EventFormPage> createState() => _EventFormPageState();
+  State<EditEventFormPage> createState() => _EditEventFormPageState();
 }
 
-class _EventFormPageState extends State<EventFormPage> {
+class _EditEventFormPageState extends State<EditEventFormPage> {
   final _formKey = GlobalKey<FormState>();
   String _eventName = "";
   String _description = "";
@@ -27,10 +29,33 @@ class _EventFormPageState extends State<EventFormPage> {
   final TextEditingController _eventDateController = TextEditingController();
   final TextEditingController _deadlineController = TextEditingController();
 
-  @override
+ @override
   void initState() {
     super.initState();
     final df = DateFormat('yyyy-MM-dd HH:mm');
+    
+    final data = widget.event; 
+
+    _eventName = data['name'] ?? "";
+    _description = data['description'] ?? "";
+    _totalParticipants = data['capacity'] ?? 0;
+    
+    String loc = data['location'] ?? "jakarta_barat";
+    _location = _cities.contains(loc) ? loc : _cities[0];
+
+    _image = data['image'] ?? ""; 
+    _image2 = data['image2'] ?? "";
+    _image3 = data['image3'] ?? "";
+    _contactPerson = data['contact'] ?? "";
+    _coin = data['coin'] ?? 0;
+
+    if (data['event_date'] != null) _eventDate = DateTime.parse(data['event_date']);
+    if (data['regist_deadline'] != null) _registDeadline = DateTime.parse(data['regist_deadline']);
+
+    if (data['event_categories'] != null) {
+      _selectedCategories = List<String>.from(data['event_categories']);
+    }
+
     _eventDateController.text = df.format(_eventDate);
     _deadlineController.text = df.format(_registDeadline);
   }
@@ -69,13 +94,14 @@ class _EventFormPageState extends State<EventFormPage> {
             ),
             textButtonTheme: TextButtonThemeData(
               style: TextButton.styleFrom(
-                foregroundColor: myColor, 
+                foregroundColor: myColor,
               ),
             ),
           ),
           child: child!,
         );
       },
+      // ------------------------------------
     );
 
     if (datePart != null) {
@@ -152,7 +178,7 @@ class _EventFormPageState extends State<EventFormPage> {
     "half_marathon",
     "full_marathon"
   ];
-  final List<String> _selectedCategories = [];
+  List<String> _selectedCategories = [];
 
   Widget _buildInputLabel(String label) {
     return Padding(
@@ -195,7 +221,7 @@ class _EventFormPageState extends State<EventFormPage> {
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        title: const Center(child: Text('Create New Event')),
+        title: const Center(child: Text('Edit Your Event')),
         backgroundColor: const Color(0xFF1D4ED8),
         foregroundColor: Colors.white,
         elevation: 0,
@@ -251,6 +277,7 @@ class _EventFormPageState extends State<EventFormPage> {
 
                         _buildInputLabel("Event Name"),
                         TextFormField(
+                          initialValue: _eventName,
                           decoration: _buildInputDecoration("Enter event name"),
                           onChanged: (value) =>
                               setState(() => _eventName = value),
@@ -262,6 +289,7 @@ class _EventFormPageState extends State<EventFormPage> {
 
                         _buildInputLabel("Event Description"),
                         TextFormField(
+                          initialValue: _description,
                           maxLines: 4,
                           decoration: _buildInputDecoration(
                             "Describe what the event is about...",
@@ -276,11 +304,11 @@ class _EventFormPageState extends State<EventFormPage> {
 
                         _buildInputLabel("Location"),
                         DropdownButtonFormField<String>(
+                          value: _location,                           
                           decoration: _buildInputDecoration(
                             "Select Location",
                             suffixIcon: const Icon(Icons.location_on_outlined),
                           ),
-                          value: _location,
                           icon: const Icon(Icons.keyboard_arrow_down),
                           items: _cities
                               .map(
@@ -366,6 +394,7 @@ class _EventFormPageState extends State<EventFormPage> {
 
                         _buildInputLabel("Contact Person"),
                         TextFormField(
+                          initialValue: _contactPerson,
                           decoration: _buildInputDecoration(
                             "Enter phone number",
                           ),
@@ -379,6 +408,7 @@ class _EventFormPageState extends State<EventFormPage> {
 
                         _buildInputLabel("Max Participants"),
                         TextFormField(
+                          initialValue: _totalParticipants.toString(),
                           decoration: _buildInputDecoration(
                             "0",
                             suffixIcon: const Icon(Icons.people_outline),
@@ -401,6 +431,7 @@ class _EventFormPageState extends State<EventFormPage> {
 
                          _buildInputLabel("Coin Reward"),
                         TextFormField(
+                          initialValue: _coin.toString(),
                           decoration: _buildInputDecoration(
                             "0",
                             suffixIcon: const Icon(Icons.people_outline),
@@ -460,6 +491,7 @@ class _EventFormPageState extends State<EventFormPage> {
 
                         _buildInputLabel("Image URL (Optional)"),
                         TextFormField(
+                          initialValue: _image,
                           decoration: _buildInputDecoration(
                             "https://example.com/image.jpg",
                             suffixIcon: const Icon(Icons.image_outlined),
@@ -473,6 +505,7 @@ class _EventFormPageState extends State<EventFormPage> {
 
                         _buildInputLabel("Image 2 URL (Optional)"),
                         TextFormField(
+                          initialValue: _image2,
                           decoration: _buildInputDecoration(
                             "https://example.com/image.jpg",
                             suffixIcon: const Icon(Icons.image_outlined),
@@ -486,6 +519,7 @@ class _EventFormPageState extends State<EventFormPage> {
 
                         _buildInputLabel("Image 3 URL (Optional)"),
                         TextFormField(
+                          initialValue: _image3,
                           decoration: _buildInputDecoration(
                             "https://example.com/image.jpg",
                             suffixIcon: const Icon(Icons.image_outlined),
@@ -524,10 +558,12 @@ class _EventFormPageState extends State<EventFormPage> {
                         return; 
                       }
                       if (_formKey.currentState!.validate()) {
+                        // Tampilkan loading
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(content: Text('Mengirim data ke server...')),
                         );
-                        final Uri url = Uri.parse('http://localhost:8000/api-test-flutter/');
+                        String id = widget.event['id'].toString(); 
+                        final Uri url = Uri.parse('http://localhost:8000/api-edit-flutter/$id/');
                         
                         try {
                           final response = await http.post(
@@ -560,10 +596,7 @@ class _EventFormPageState extends State<EventFormPage> {
                                   backgroundColor: Colors.green,
                                 ),
                               );
-                              Navigator.pushReplacement(
-                                context,
-                                MaterialPageRoute(builder: (context) => const EventFormPage()),
-                              );
+                              Navigator.pop(context, true);
                             } else {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
