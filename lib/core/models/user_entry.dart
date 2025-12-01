@@ -1,3 +1,4 @@
+//Shared Model
 class UserProfile {
   final int id;
   final String username;
@@ -42,10 +43,7 @@ class RunnerDetails {
   final String baseLocation;
   final int coin;
 
-  RunnerDetails({
-    required this.baseLocation,
-    required this.coin,
-  });
+  RunnerDetails({required this.baseLocation, required this.coin});
 
   factory RunnerDetails.fromJson(Map<String, dynamic> json) {
     return RunnerDetails(
