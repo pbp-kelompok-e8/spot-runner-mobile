@@ -36,11 +36,10 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final _formKey = GlobalKey<FormState>(); // Kunci untuk form
+  final _formKey = GlobalKey<FormState>();
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
-  // Variabel untuk menyimpan pesan error dari server
   String? _usernameError;
   String? _passwordError;
 
@@ -48,7 +47,6 @@ class _LoginPageState extends State<LoginPage> {
   Widget build(BuildContext context) {
     final request = context.watch<CookieRequest>();
     
-    // Definisi warna (Sama seperti Register)
     final Color primaryBlue = const Color(0xFF1D4ED8);
     final Color textDark = const Color(0xFF111827);
     final Color textGrey = const Color(0xFF6B7280);
@@ -76,13 +74,11 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                 ],
               ),
-              // Bungkus dengan Form agar validator bisa berjalan
               child: Form(
                 key: _formKey,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // --- HEADER ---
                     Text(
                       'Sign In',
                       textAlign: TextAlign.center,
@@ -106,30 +102,26 @@ class _LoginPageState extends State<LoginPage> {
 
                     // --- FORM INPUTS ---
                     
-                    // Username Input
                     _buildLabel('Username', textLabel),
                     TextFormField(
                       controller: _usernameController,
                       decoration: _inputDecoration('Enter your username', inputBorder, primaryBlue),
-                      // Reset error saat user mengetik
                       onChanged: (value) {
                         if (_usernameError != null) {
                           setState(() => _usernameError = null);
-                          _formKey.currentState!.validate();
+                          _formKey.currentState!.validate(); // Hapus merah saat ketik
                         }
                       },
-                      // Validator
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return 'Please enter your username';
                         }
-                        return _usernameError; // Tampilkan error dari server jika ada
+                        return _usernameError;
                       },
                     ),
                     
                     const SizedBox(height: 20.0),
 
-                    // Password Input
                     _buildLabel('Password', textLabel),
                     TextFormField(
                       controller: _passwordController,
@@ -138,14 +130,14 @@ class _LoginPageState extends State<LoginPage> {
                       onChanged: (value) {
                         if (_passwordError != null) {
                           setState(() => _passwordError = null);
-                          _formKey.currentState!.validate();
+                          _formKey.currentState!.validate(); // Hapus merah saat ketik
                         }
                       },
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return 'Please enter your password';
                         }
-                        return _passwordError; // Tampilkan error dari server jika ada
+                        return _passwordError;
                       },
                     ),
 
@@ -154,18 +146,17 @@ class _LoginPageState extends State<LoginPage> {
                     // --- BUTTON ---
                     ElevatedButton(
                       onPressed: () async {
-                        // 1. Reset error state sebelum request baru
+                        // 1. Reset error state
                         setState(() {
                           _usernameError = null;
                           _passwordError = null;
                         });
 
-                        // 2. Cek validasi lokal (field kosong)
+                        // 2. Validasi lokal (kosong atau tidak)
                         if (_formKey.currentState!.validate()) {
                           String username = _usernameController.text;
                           String password = _passwordController.text;
 
-                          // 3. Kirim Request Login
                           final response = await request.login(
                               "http://localhost:8000/auth/login/", {
                             'username': username,
@@ -188,26 +179,29 @@ class _LoginPageState extends State<LoginPage> {
                                 );
                             }
                           } else {
-                            // 4. Tangani Error dari Server
                             if (context.mounted) {
                               String message = response['message'] ?? 'Login failed';
                               
                               setState(() {
-                                // Logika sederhana untuk menempatkan pesan error
-                                // Backend Django biasanya mengembalikan pesan umum "Invalid username or password"
-                                // atau spesifik jika Anda mengaturnya.
+                                // --- LOGIKA BARU UNTUK UI ---
                                 
-                                if (message.toLowerCase().contains('user') || message.toLowerCase().contains('username')) {
-                                  _usernameError = message;
-                                } else if (message.toLowerCase().contains('password') || message.toLowerCase().contains('credential')) {
+                                // Cek pesan spesifik dari Backend (views.py: "Username atau password salah.")
+                                // Atau pesan default Django "Please enter a correct username and password"
+                                if (message.toLowerCase().contains('password') && message.toLowerCase().contains('user')) {
+                                  // Jika error menyebut keduanya, nyalakan merah di KEDUA kolom
+                                  _usernameError = " "; // Spasi kosong agar border merah tapi teks tidak double
+                                  _passwordError = message; // Pesan lengkap ditaruh di bawah password
+                                } 
+                                // Jika error spesifik (misal "Akun dinonaktifkan")
+                                else if (message.toLowerCase().contains('akun') || message.toLowerCase().contains('account')) {
+                                   _usernameError = message;
+                                }
+                                // Fallback error
+                                else {
                                   _passwordError = message;
-                                } else {
-                                  // Jika pesan general (misal "Invalid login"), tampilkan di bawah password atau pakai SnackBar
-                                  _passwordError = message; 
                                 }
                               });
                               
-                              // Picu ulang validator untuk menampilkan teks merah
                               _formKey.currentState!.validate();
                             }
                           }
@@ -231,7 +225,6 @@ class _LoginPageState extends State<LoginPage> {
 
                     const SizedBox(height: 32.0),
 
-                    // --- DIVIDER ---
                     Divider(
                       color: Colors.grey[200],
                       thickness: 1.5,
@@ -239,7 +232,6 @@ class _LoginPageState extends State<LoginPage> {
 
                     const SizedBox(height: 24.0),
 
-                    // --- FOOTER ---
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -279,8 +271,6 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  // --- HELPER WIDGETS (Disamakan dengan RegisterPage) ---
-
   Widget _buildLabel(String text, Color color) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 6.0),
@@ -309,7 +299,6 @@ class _LoginPageState extends State<LoginPage> {
         borderRadius: BorderRadius.circular(8.0),
         borderSide: BorderSide(color: focusColor, width: 1.5),
       ),
-      // Style untuk error state
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8.0),
         borderSide: const BorderSide(color: Colors.red),
