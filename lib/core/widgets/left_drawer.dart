@@ -9,7 +9,7 @@ class LeftDrawer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final request = context.watch<CookieRequest>();
+    // final request = context.watch<CookieRequest>();
 
     return Drawer(
       child: Column(
@@ -19,7 +19,7 @@ class LeftDrawer extends StatelessWidget {
             child: ListView(
               children: [
                 const DrawerHeader(
-                  decoration: BoxDecoration(color: Colors.blue),
+                  decoration: BoxDecoration(color: Color(0xFF1D4ED8)),
                   child: Column(
                     children: [
                       Text(
@@ -84,35 +84,35 @@ class LeftDrawer extends StatelessWidget {
           const Divider(),
 
           // Tombol Sign Out
-          ListTile(
-            leading: const Icon(Icons.logout, color: Colors.red),
-            title: const Text(
-              "Sign Out",
-              style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
-            ),
-            onTap: () async {
-              final response = await request.logout(
-                "http://localhost:8000/auth/logout/",
-              );
-              String message = response["message"];
-              if (context.mounted) {
-                if (response['status']) {
-                  String uname = response["username"];
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text("$message Sampai jumpa, $uname.")),
-                  );
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (context) => const LoginPage()),
-                  );
-                } else {
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(SnackBar(content: Text(message)));
-                }
-              }
-            },
-          ),
+          // ListTile(
+          //   leading: const Icon(Icons.logout, color: Colors.red),
+          //   title: const Text(
+          //     "Sign Out",
+          //     style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+          //   ),
+          //   onTap: () async {
+          //     final response = await request.logout(
+          //       "http://localhost:8000/auth/logout/",
+          //     );
+          //     String message = response["message"];
+          //     if (context.mounted) {
+          //       if (response['status']) {
+          //         String uname = response["username"];
+          //         ScaffoldMessenger.of(context).showSnackBar(
+          //           SnackBar(content: Text("$message Sampai jumpa, $uname.")),
+          //         );
+          //         Navigator.pushReplacement(
+          //           context,
+          //           MaterialPageRoute(builder: (context) => const LoginPage()),
+          //         );
+          //       } else {
+          //         ScaffoldMessenger.of(
+          //           context,
+          //         ).showSnackBar(SnackBar(content: Text(message)));
+          //       }
+          //     }
+          //   },
+          // ),
 
           const SizedBox(height: 10),
         ],

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:spot_runner_mobile/core/widgets/left_drawer.dart';
+import 'package:spot_runner_mobile/features/event/screens/testpage.dart';
 
 class EventFormPage extends StatefulWidget {
   const EventFormPage({super.key});
@@ -195,11 +197,13 @@ class _EventFormPageState extends State<EventFormPage> {
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        title: const Center(child: Text('Create New Event')),
-        backgroundColor: const Color(0xFF1D4ED8),
-        foregroundColor: Colors.white,
+        title: const Text('Spot Runner'),
+        backgroundColor: Colors.white,
+        foregroundColor: const Color(0xFF1D4ED8),
         elevation: 0,
+        centerTitle: true,
       ),
+      drawer: const LeftDrawer(),
       body: Form(
         key: _formKey,
         child: SingleChildScrollView(
@@ -562,7 +566,7 @@ class _EventFormPageState extends State<EventFormPage> {
                               );
                               Navigator.pushReplacement(
                                 context,
-                                MaterialPageRoute(builder: (context) => const EventFormPage()),
+                                MaterialPageRoute(builder: (context) => const EventListPage()),
                               );
                             } else {
                               ScaffoldMessenger.of(context).showSnackBar(

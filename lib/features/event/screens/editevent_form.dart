@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:spot_runner_mobile/core/widgets/left_drawer.dart';
 
 class EditEventFormPage extends StatefulWidget {
   final Map<String, dynamic> event; 
@@ -221,11 +222,13 @@ class _EditEventFormPageState extends State<EditEventFormPage> {
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        title: const Center(child: Text('Edit Your Event')),
-        backgroundColor: const Color(0xFF1D4ED8),
-        foregroundColor: Colors.white,
+        title: const Text('Spot Runner'),
+        backgroundColor: Colors.white,
+        foregroundColor: const Color(0xFF1D4ED8),
         elevation: 0,
+        centerTitle: true,
       ),
+      drawer: const LeftDrawer(),
       body: Form(
         key: _formKey,
         child: SingleChildScrollView(
