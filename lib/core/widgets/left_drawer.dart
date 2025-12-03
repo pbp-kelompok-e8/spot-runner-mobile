@@ -3,6 +3,9 @@ import 'package:spot_runner_mobile/core/screens/menu.dart';
 import 'package:spot_runner_mobile/features/auth/screens/login.dart';
 import 'package:pbp_django_auth/pbp_django_auth.dart';
 import 'package:provider/provider.dart';
+import 'package:spot_runner_mobile/features/event/screens/dashboard_screen.dart';
+import 'package:spot_runner_mobile/features/event/screens/profile_screen.dart';
+
 
 class LeftDrawer extends StatelessWidget {
   const LeftDrawer({super.key});
@@ -57,7 +60,12 @@ class LeftDrawer extends StatelessWidget {
                   title: const Text('Dashboard'),
                   onTap: () {
                     // TODO: Navigate ke Dashboard
-                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const DashboardScreen(),
+                      ),
+                    );
                   },
                 ),
                 ListTile(
@@ -65,7 +73,12 @@ class LeftDrawer extends StatelessWidget {
                   title: const Text('Profile'),
                   onTap: () {
                     // TODO: Navigate ke Profile
-                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const ProfileScreen(),
+                      ),
+                    );
                   },
                 ),
                 ListTile(

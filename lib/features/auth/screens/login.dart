@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:pbp_django_auth/pbp_django_auth.dart';
 import 'package:provider/provider.dart';
 import 'package:spot_runner_mobile/features/auth/screens/register.dart';
+import 'package:spot_runner_mobile/core/models/user_entry.dart';
+import 'package:spot_runner_mobile/core/providers/user_provider.dart';
 
 void main() {
   runApp(const LoginApp());
@@ -169,26 +171,44 @@ class _LoginPageState extends State<LoginPage> {
                       String username = _usernameController.text;
                       String password = _passwordController.text;
 
-                      // Ganti URL sesuai endpoint backend Anda
                       final response = await request.login(
-                          "http://localhost:8000/auth/login/", {
-                        'username': username,
-                        'password': password,
-                      });
+                        "http://localhost:8000/auth/login/",
+                        {
+                          'username': username,
+                          'password': password,
+                        },
+                      );
 
                       if (request.loggedIn) {
-                        String message = response['message'];
-                        String uname = response['username'];
+
+                        /// ============================================
+                        /// 1. Ambil data user dari response API
+                        /// ============================================
+                        final userJson = response['user'];  // PENTING!
+                        final user = UserProfile.fromJson(userJson);
+
+                        /// ============================================
+                        /// 2. Simpan ke Provider
+                        /// ============================================
+                        if (context.mounted) {
+                          context.read<UserProvider>().setUser(user);
+                        }
+
+                        /// ============================================
+                        /// 3. Navigasi ke HomePage
+                        /// ============================================
                         if (context.mounted) {
                           Navigator.pushReplacement(
                             context,
-                            MaterialPageRoute(
-                                builder: (context) => MyHomePage()),
+                            MaterialPageRoute(builder: (context) => MyHomePage()),
                           );
+
                           ScaffoldMessenger.of(context)
                             ..hideCurrentSnackBar()
                             ..showSnackBar(
-                              SnackBar(content: Text("$message Welcome, $uname.")),
+                              SnackBar(
+                                content: Text("${response['message']} Welcome, ${user.username}."),
+                              ),
                             );
                         }
                       } else {
@@ -224,6 +244,7 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     child: const Text('Sign In'),
                   ),
+
 
                   const SizedBox(height: 32.0),
 
