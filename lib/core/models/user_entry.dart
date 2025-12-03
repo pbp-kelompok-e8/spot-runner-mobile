@@ -5,7 +5,7 @@ class UserProfile {
   final String email;
   final String role;
   final RunnerDetails? runnerDetails;
-  final OrganizerDetails? organizerDetails;
+  final EventOrganizerDetails? eventOrganizerDetails;
 
   UserProfile({
     required this.id,
@@ -13,18 +13,18 @@ class UserProfile {
     required this.email,
     required this.role,
     this.runnerDetails,
-    this.organizerDetails,
+    this.eventOrganizerDetails,
   });
 
   factory UserProfile.fromJson(Map<String, dynamic> json) {
     RunnerDetails? runnerData;
-    OrganizerDetails? organizerData;
+    EventOrganizerDetails? eventOrganizerData;
 
     if (json['details'] != null) {
       if (json['role'] == 'runner') {
         runnerData = RunnerDetails.fromJson(json['details']);
       } else if (json['role'] == 'event_organizer') {
-        organizerData = OrganizerDetails.fromJson(json['details']);
+        eventOrganizerData = EventOrganizerDetails.fromJson(json['details']);
       }
     }
 
@@ -34,7 +34,7 @@ class UserProfile {
       email: json['email'],
       role: json['role'],
       runnerDetails: runnerData,
-      organizerDetails: organizerData,
+      eventOrganizerDetails: eventOrganizerData,
     );
   }
 }
@@ -53,28 +53,19 @@ class RunnerDetails {
   }
 }
 
-class OrganizerDetails {
+class EventOrganizerDetails {
   final String baseLocation;
   final String profilePicture;
-  final int totalEvents;
-  final double rating;
-  final int coin;
 
-  OrganizerDetails({
+  EventOrganizerDetails({
     required this.baseLocation,
     required this.profilePicture,
-    required this.totalEvents,
-    required this.rating,
-    required this.coin,
   });
 
-  factory OrganizerDetails.fromJson(Map<String, dynamic> json) {
-    return OrganizerDetails(
+  factory EventOrganizerDetails.fromJson(Map<String, dynamic> json) {
+    return EventOrganizerDetails(
       baseLocation: json['base_location'] ?? '',
       profilePicture: json['profile_picture'] ?? '',
-      totalEvents: json['total_events'] ?? 0,
-      rating: (json['rating'] as num?)?.toDouble() ?? 0.0,
-      coin: json['coin'] ?? 0,
     );
   }
 }
