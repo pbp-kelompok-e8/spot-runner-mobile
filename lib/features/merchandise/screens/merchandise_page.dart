@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:spot_runner_mobile/features/merchandise/models/merchandise_model.dart';
 import 'package:spot_runner_mobile/features/merchandise/widgets/product_card.dart'; // Import widget baru
 import 'package:spot_runner_mobile/core/widgets/left_drawer.dart';
+import 'package:spot_runner_mobile/features/merchandise/screens/add_product_page.dart';
 
 class MerchandisePage extends StatefulWidget {
   const MerchandisePage({super.key});
@@ -38,10 +39,10 @@ class _MerchandisePageState extends State<MerchandisePage> {
       final response = await request.get(
         'http://localhost:8000/merchandise/user-coins/',
       );
-      
+
       // Debug: Print response
       debugPrint('User coins response: $response');
-      
+
       if (mounted) {
         setState(() {
           userCoins = response['coins'] ?? 0;
@@ -75,10 +76,10 @@ class _MerchandisePageState extends State<MerchandisePage> {
       // if (response.isNotEmpty) {
       //   debugPrint('First item structure: ${response[0]}');
       // }
-      
+
       // Debug: Print response
       // debugPrint('Merchandise response: $response');
-      
+
       List<Merchandise> listMerchandise = [];
       for (var d in response) {
         if (d != null) {
@@ -100,10 +101,7 @@ class _MerchandisePageState extends State<MerchandisePage> {
       appBar: AppBar(
         title: const Text(
           'Merchandise',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         backgroundColor: Theme.of(context).colorScheme.primary,
         iconTheme: const IconThemeData(color: Colors.white),
@@ -129,10 +127,7 @@ class _MerchandisePageState extends State<MerchandisePage> {
                 // Section Title
                 const Text(
                   'Merchandise',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                 ),
 
                 const SizedBox(height: 16),
@@ -226,23 +221,19 @@ class _MerchandisePageState extends State<MerchandisePage> {
                       physics: const NeverScrollableScrollPhysics(),
                       gridDelegate:
                           const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        crossAxisSpacing: 12,
-                        mainAxisSpacing: 12,
-                        childAspectRatio: 0.65,
-                      ),
+                            crossAxisCount: 2,
+                            crossAxisSpacing: 12,
+                            mainAxisSpacing: 12,
+                            childAspectRatio: 0.65,
+                          ),
                       itemCount: snapshot.data!.length,
                       itemBuilder: (context, index) {
                         Merchandise merchandise = snapshot.data![index];
                         return ProductCard(
                           merchandise: merchandise,
-                          onTap: () {
-                            // TODO: Navigate to detail page
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Viewing: ${merchandise.name}'),
-                              ),
-                            );
+                          onRefresh: () {
+                            debugPrint('ProductCard onRefresh called, calling setState');
+                            setState(() {});
                           },
                         );
                       },
@@ -302,10 +293,7 @@ class _MerchandisePageState extends State<MerchandisePage> {
                   ),
                   Text(
                     userType == 'organizer' ? 'Total Earned' : 'Sport Rewards',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[600],
-                    ),
+                    style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                   ),
                 ],
               ),
@@ -377,12 +365,13 @@ class _MerchandisePageState extends State<MerchandisePage> {
       width: double.infinity,
       child: ElevatedButton.icon(
         onPressed: () {
-          // TODO: Navigate to add product page
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Add product feature coming soon!'),
-            ),
-          );
+          // Navigate to add product page
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const AddProductPage()),
+          ).then((_) {
+            setState(() {});
+          });
         },
         icon: const Icon(Icons.add),
         label: const Text('Add New Product'),
