@@ -5,6 +5,8 @@ import 'package:spot_runner_mobile/features/merchandise/models/merchandise_model
 import 'package:spot_runner_mobile/features/merchandise/widgets/product_card.dart'; // Import widget baru
 import 'package:spot_runner_mobile/core/widgets/left_drawer.dart';
 import 'package:spot_runner_mobile/features/merchandise/screens/add_product_page.dart';
+import 'package:spot_runner_mobile/features/merchandise/screens/history_page.dart';
+import 'dart:async';
 
 class MerchandisePage extends StatefulWidget {
   const MerchandisePage({super.key});
@@ -18,6 +20,8 @@ class _MerchandisePageState extends State<MerchandisePage> {
   int userCoins = 0;
   String userType = 'guest';
   bool isLoadingCoins = true;
+  int _refreshKey = 0; // Key untuk force rebuild
+  Timer? _refreshTimer; // Timer untuk auto refresh
 
   final List<Map<String, String>> categories = [
     {'value': 'All', 'label': 'All'},
@@ -31,6 +35,26 @@ class _MerchandisePageState extends State<MerchandisePage> {
   void initState() {
     super.initState();
     fetchUserCoins();
+    _startAutoRefresh();
+  }
+
+   @override
+  void dispose() {
+    _refreshTimer?.cancel(); // Cancel timer saat dispose
+    super.dispose();
+  }
+
+  // Auto refresh setiap 30 detik untuk organizer
+  void _startAutoRefresh() {
+    _refreshTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
+      if (mounted && userType == 'organizer') {
+        debugPrint('Auto refreshing data for organizer...');
+        fetchUserCoins();
+        setState(() {
+          _refreshKey++;
+        });
+      }
+    });
   }
 
   Future<void> fetchUserCoins() async {
@@ -110,7 +134,9 @@ class _MerchandisePageState extends State<MerchandisePage> {
       body: RefreshIndicator(
         onRefresh: () async {
           await fetchUserCoins();
-          setState(() {});
+          setState(() {
+            _refreshKey++; // Force rebuild products
+          });
         },
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -144,6 +170,7 @@ class _MerchandisePageState extends State<MerchandisePage> {
 
                 // Products Grid
                 FutureBuilder(
+                  key: ValueKey(_refreshKey), // Force rebuild dengan key
                   future: fetchMerchandise(request),
                   builder: (context, AsyncSnapshot snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
@@ -231,9 +258,14 @@ class _MerchandisePageState extends State<MerchandisePage> {
                         Merchandise merchandise = snapshot.data![index];
                         return ProductCard(
                           merchandise: merchandise,
-                          onRefresh: () {
-                            debugPrint('ProductCard onRefresh called, calling setState');
-                            setState(() {});
+                          onRefresh: () async {
+                            debugPrint(
+                              'ProductCard onRefresh called, calling setState',
+                            );
+                            await fetchUserCoins();
+                            setState(() {
+                              _refreshKey++;
+                            });
                           },
                         );
                       },
@@ -302,9 +334,10 @@ class _MerchandisePageState extends State<MerchandisePage> {
           const SizedBox(height: 16),
           OutlinedButton.icon(
             onPressed: () {
-              // TODO: Navigate to history page
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('History feature coming soon!')),
+              // Navigate to history page
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const HistoryPage()),
               );
             },
             icon: const Icon(Icons.history),

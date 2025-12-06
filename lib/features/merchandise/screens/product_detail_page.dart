@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:spot_runner_mobile/features/merchandise/models/merchandise_model.dart';
 import 'package:spot_runner_mobile/features/merchandise/screens/edit_product_page.dart';
 import 'package:spot_runner_mobile/features/merchandise/utils/image_helper.dart';
+import 'dart:convert';
 
 class ProductDetailPage extends StatefulWidget {
   final String merchandiseId;
@@ -22,7 +23,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
   int userCoins = 0;
   bool isOwner = false;
 
-  //
+  // Track semua perubahan (edit/delete/redeem)
   bool hasChanges = false;
 
   @override
@@ -178,13 +179,15 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     try {
       final response = await request.postJson(
         'http://localhost:8000/merchandise/${widget.merchandiseId}/redeem/',
-        {'quantity': quantity}.toString(),
+        jsonEncode({'quantity': quantity}),
       );
 
       if (mounted) {
         if (response['success'] == true) {
+          // Set flag ada perubahan sebelum show success dialog
+          hasChanges = true;
+          await fetchData(); // Refresh data di detail page
           _showSuccessDialog();
-          fetchData(); // Refresh data
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -220,7 +223,14 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                 children: [
                   IconButton(
                     icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.pop(context),
+                    // onPressed: () => Navigator.pop(context),
+                    onPressed: () {
+                      Navigator.pop(context); // Close dialog
+                      // Set flag ada perubahan
+                      setState(() {
+                        hasChanges = true;
+                      });
+                    },
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
                   ),
@@ -245,7 +255,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                 child: ElevatedButton(
                   onPressed: () {
                     Navigator.pop(context); // Close dialog
-                    Navigator.pop(context); // Back to list
+                    Navigator.pop(context, true); // Back to list
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.lightGreen,
