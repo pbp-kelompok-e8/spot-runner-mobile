@@ -3,13 +3,14 @@ import 'package:spot_runner_mobile/core/screens/menu.dart';
 import 'package:spot_runner_mobile/features/auth/screens/login.dart';
 import 'package:pbp_django_auth/pbp_django_auth.dart';
 import 'package:provider/provider.dart';
+import 'package:spot_runner_mobile/features/event/screens/testpage.dart';
 
 class LeftDrawer extends StatelessWidget {
   const LeftDrawer({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // final request = context.watch<CookieRequest>();
+    final request = context.watch<CookieRequest>();
 
     return Drawer(
       child: Column(
@@ -57,7 +58,7 @@ class LeftDrawer extends StatelessWidget {
                   title: const Text('Dashboard'),
                   onTap: () {
                     // TODO: Navigate ke Dashboard
-                    Navigator.pop(context);
+                    Navigator.push(context, MaterialPageRoute(builder: (context) => EventListPage() ));
                   },
                 ),
                 ListTile(
@@ -84,35 +85,35 @@ class LeftDrawer extends StatelessWidget {
           const Divider(),
 
           // Tombol Sign Out
-          // ListTile(
-          //   leading: const Icon(Icons.logout, color: Colors.red),
-          //   title: const Text(
-          //     "Sign Out",
-          //     style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
-          //   ),
-          //   onTap: () async {
-          //     final response = await request.logout(
-          //       "http://localhost:8000/auth/logout/",
-          //     );
-          //     String message = response["message"];
-          //     if (context.mounted) {
-          //       if (response['status']) {
-          //         String uname = response["username"];
-          //         ScaffoldMessenger.of(context).showSnackBar(
-          //           SnackBar(content: Text("$message Sampai jumpa, $uname.")),
-          //         );
-          //         Navigator.pushReplacement(
-          //           context,
-          //           MaterialPageRoute(builder: (context) => const LoginPage()),
-          //         );
-          //       } else {
-          //         ScaffoldMessenger.of(
-          //           context,
-          //         ).showSnackBar(SnackBar(content: Text(message)));
-          //       }
-          //     }
-          //   },
-          // ),
+          ListTile(
+            leading: const Icon(Icons.logout, color: Colors.red),
+            title: const Text(
+              "Sign Out",
+              style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+            ),
+            onTap: () async {
+              final response = await request.logout(
+                "http://localhost:8000/auth/logout/",
+              );
+              String message = response["message"];
+              if (context.mounted) {
+                if (response['status']) {
+                  String uname = response["username"];
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text("$message Sampai jumpa, $uname.")),
+                  );
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (context) => const LoginPage()),
+                  );
+                } else {
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text(message)));
+                }
+              }
+            },
+          ),
 
           const SizedBox(height: 10),
         ],

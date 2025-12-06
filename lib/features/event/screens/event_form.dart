@@ -4,6 +4,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:spot_runner_mobile/core/widgets/left_drawer.dart';
 import 'package:spot_runner_mobile/features/event/screens/testpage.dart';
+import 'package:provider/provider.dart';
+import 'package:pbp_django_auth/pbp_django_auth.dart';
 
 class EventFormPage extends StatefulWidget {
   const EventFormPage({super.key});
@@ -194,6 +196,7 @@ class _EventFormPageState extends State<EventFormPage> {
 
   @override
   Widget build(BuildContext context) {
+    final request = context.watch<CookieRequest>();
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
@@ -517,11 +520,13 @@ class _EventFormPageState extends State<EventFormPage> {
                       ),
                     ),
                     onPressed: () async {
+                      print("🔥 User logged in: ${request.loggedIn}");
+                      print("🔥 Cookies: ${request.cookies}");
                       if (_selectedCategories.isEmpty) {
                         // Tampilkan pesan error jika kosong
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
-                            content: Text("Harap pilih minimal satu kategori event!"),
+                            content: Text("Please select at least one category."),
                             backgroundColor: Colors.red,
                           ),
                         );
@@ -529,17 +534,11 @@ class _EventFormPageState extends State<EventFormPage> {
                       }
                       if (_formKey.currentState!.validate()) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Mengirim data ke server...')),
+                          const SnackBar(content: Text('Sending data...')),
                         );
-                        final Uri url = Uri.parse('http://localhost:8000/api-test-flutter/');
-                        
                         try {
-                          final response = await http.post(
-                            url,
-                            headers: {
-                              "Content-Type": "application/json",
-                            },
-                            body: jsonEncode({
+                          final response = await request.postJson('http://localhost:8000/event/create-flutter/',
+                          jsonEncode({
                               "name": _eventName,
                               "description": _description,
                               "location": _location,
@@ -557,10 +556,10 @@ class _EventFormPageState extends State<EventFormPage> {
                           );
 
                           if (context.mounted) {
-                            if (response.statusCode == 200) {
+                            if (response['status'] == 'success') {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
-                                  content: Text("Berhasil! Event tersimpan."),
+                                  content: Text("Success! Event saved."),
                                   backgroundColor: Colors.green,
                                 ),
                               );
@@ -571,7 +570,7 @@ class _EventFormPageState extends State<EventFormPage> {
                             } else {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
-                                  content: Text("Gagal: ${response.statusCode} - ${response.body}"),
+                                  content: Text("Failed: ${response['message']}"),
                                   backgroundColor: Colors.red,
                                 ),
                               );

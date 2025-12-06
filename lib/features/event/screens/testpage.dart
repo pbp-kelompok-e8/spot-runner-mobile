@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:spot_runner_mobile/features/event/screens/editevent_form.dart'; 
 import 'package:spot_runner_mobile/features/event/screens/event_form.dart'; 
+import 'package:spot_runner_mobile/features/event/screens/detailevent_page.dart';
 
 class EventListPage extends StatefulWidget {
   const EventListPage({super.key});
@@ -55,6 +56,14 @@ class _EventListPageState extends State<EventListPage> {
                   elevation: 4,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   child: ListTile(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => EventDetailPage(eventId: event['id']),
+                        ),
+                      );
+                    },
                     contentPadding: const EdgeInsets.all(16),
                     title: Text(
                       event['name'],
@@ -146,7 +155,7 @@ class _EventListPageState extends State<EventListPage> {
     );
   }
   Future<void> _deleteEvent(String id) async {
-    final Uri url = Uri.parse('http://localhost:8000/api-delete-flutter/$id/');
+    final Uri url = Uri.parse('http://localhost:8000/event/delete-flutter/$id/');
     
     try {
       final response = await http.post(

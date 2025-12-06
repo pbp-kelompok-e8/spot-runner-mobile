@@ -3,6 +3,8 @@ import 'package:intl/intl.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:spot_runner_mobile/core/widgets/left_drawer.dart';
+import 'package:provider/provider.dart';
+import 'package:pbp_django_auth/pbp_django_auth.dart';
 
 class EditEventFormPage extends StatefulWidget {
   final Map<String, dynamic> event; 
@@ -219,6 +221,16 @@ class _EditEventFormPageState extends State<EditEventFormPage> {
 
   @override
   Widget build(BuildContext context) {
+    final request = context.watch<CookieRequest>();
+    final dynamic sessionUserId = request.jsonData.containsKey('user_id')
+        ? request.jsonData['user_id']
+        : null;
+
+    final int? eventUserId = sessionUserId is int
+        ? sessionUserId
+        : sessionUserId != null
+        ? int.tryParse(sessionUserId.toString())
+        : null;
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
@@ -258,7 +270,7 @@ class _EditEventFormPageState extends State<EditEventFormPage> {
                           child: Column(
                             children: const [
                               Text(
-                                'Create New Event',
+                                'Edit Event',
                                 style: TextStyle(
                                   fontSize: 24,
                                   fontWeight: FontWeight.w800,
@@ -267,7 +279,7 @@ class _EditEventFormPageState extends State<EditEventFormPage> {
                               ),
                               SizedBox(height: 8),
                               Text(
-                                'Launch new marathon event',
+                                'Edit your marathon event details',
                                 style: TextStyle(
                                   fontSize: 15,
                                   color: Colors.black54,
@@ -554,7 +566,7 @@ class _EditEventFormPageState extends State<EditEventFormPage> {
                         // Tampilkan pesan error jika kosong
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
-                            content: Text("Harap pilih minimal satu kategori event!"),
+                            content: Text("Please select at least one category."),
                             backgroundColor: Colors.red,
                           ),
                         );
@@ -563,22 +575,18 @@ class _EditEventFormPageState extends State<EditEventFormPage> {
                       if (_formKey.currentState!.validate()) {
                         // Tampilkan loading
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Mengirim data ke server...')),
+                          const SnackBar(content: Text('Sending data...')),
                         );
-                        String id = widget.event['id'].toString(); 
-                        final Uri url = Uri.parse('http://localhost:8000/api-edit-flutter/$id/');
+                        String id = widget.event['id'].toString();
                         
                         try {
-                          final response = await http.post(
-                            url,
-                            headers: {
-                              "Content-Type": "application/json",
-                            },
-                            body: jsonEncode({
+                          final response = await request.postJson(
+                            'http://localhost:8000/event/edit-flutter/$id/',
+                            jsonEncode({
                               "name": _eventName,
                               "description": _description,
                               "location": _location,
-                              "image1": _image, 
+                              "image1": _image,
                               "image2": _image2,
                               "image3": _image3,
                               "event_date": _eventDate.toIso8601String(),
@@ -586,16 +594,16 @@ class _EditEventFormPageState extends State<EditEventFormPage> {
                               "contact": _contactPerson,
                               "capacity": _totalParticipants,
                               "coin": _coin,
-                              "total_participans": 0, 
-                              "categories": _selectedCategories, 
+                              "total_participans": 0,
+                              "categories": _selectedCategories,
                             }),
                           );
 
                           if (context.mounted) {
-                            if (response.statusCode == 200) {
+                            if (response['status'] == 'success') {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
-                                  content: Text("Berhasil! Event tersimpan."),
+                                  content: Text("Success! Event saved."),
                                   backgroundColor: Colors.green,
                                 ),
                               );
@@ -603,7 +611,7 @@ class _EditEventFormPageState extends State<EditEventFormPage> {
                             } else {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
-                                  content: Text("Gagal: ${response.statusCode} - ${response.body}"),
+                                  content: Text("Failed: ${response['message']}"),
                                   backgroundColor: Colors.red,
                                 ),
                               );
@@ -622,7 +630,7 @@ class _EditEventFormPageState extends State<EditEventFormPage> {
                       }
                     },
                     child: const Text(
-                      "Create Event",
+                      "Edit",
                       style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
                   ),
