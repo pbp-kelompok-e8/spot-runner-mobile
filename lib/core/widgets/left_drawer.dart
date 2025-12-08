@@ -1,11 +1,15 @@
+import 'dart:convert'; // Diperlukan untuk jsonEncode
 import 'package:flutter/material.dart';
-import 'package:spot_runner_mobile/core/screens/menu.dart';
-import 'package:spot_runner_mobile/features/auth/screens/login.dart';
 import 'package:pbp_django_auth/pbp_django_auth.dart';
 import 'package:provider/provider.dart';
+import 'package:spot_runner_mobile/core/screens/menu.dart';
+import 'package:spot_runner_mobile/features/auth/screens/login.dart';
 import 'package:spot_runner_mobile/features/event/screens/dashboard_screen.dart';
-import 'package:spot_runner_mobile/features/event/screens/profile_screen.dart';
+import 'package:spot_runner_mobile/features/event/screens/profile_screen.dart' hide UserProfile;
 
+// TODO: Sesuaikan import ini dengan lokasi file model Anda yang sebenarnya
+import 'package:spot_runner_mobile/core/models/event_entry.dart'; 
+import 'package:spot_runner_mobile/core/models/user_entry.dart';
 
 class LeftDrawer extends StatelessWidget {
   const LeftDrawer({super.key});
@@ -58,21 +62,64 @@ class LeftDrawer extends StatelessWidget {
                 ListTile(
                   leading: const Icon(Icons.dashboard),
                   title: const Text('Dashboard'),
-                  onTap: () {
-                    // TODO: Navigate ke Dashboard
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const DashboardScreen(),
+                  onTap: () async {
+                    // Tampilkan loading snackbar agar user tahu proses sedang berjalan
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text("Loading Dashboard data..."),
+                        duration: Duration(seconds: 1),
                       ),
                     );
+
+                    try {
+                      // 1. Fetch Data User Profile
+                      // TODO: Ganti URL sesuai endpoint Django Anda (contoh: /api/profile/)
+                      final userResponse = await request.get(
+                          'http://127.0.0.1:8000/api/user-profile/' 
+                      );
+                      
+                      // Konversi response ke Model
+                      // Kita pakai jsonEncode karena userFromJson butuh String, 
+                      // sedangkan request.get mengembalikan dynamic/map
+                      List<UserProfile> users = userFromJson(jsonEncode(userResponse));
+
+                      // 2. Fetch Data Events
+                      // TODO: Ganti URL sesuai endpoint Django Anda (contoh: /api/events/)
+                      final eventResponse = await request.get(
+                          'http://127.0.0.1:8000/api/events/'
+                      );
+                      
+                      List<EventDetail> events = eventDetailFromJson(jsonEncode(eventResponse));
+
+                      // 3. Navigasi ke DashboardScreen dengan membawa data
+                      if (context.mounted) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => DashboardScreen(
+                              userProfile: users.isNotEmpty ? users[0] : throw Exception("User data empty"), // Asumsi endpoint mengembalikan list user
+                              events: events,
+                            ),
+                          ),
+                        );
+                      }
+                    } catch (e) {
+                      // Error handling jika fetch gagal
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text("Gagal memuat data: $e"),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
+                    }
                   },
                 ),
                 ListTile(
                   leading: const Icon(Icons.account_box),
                   title: const Text('Profile'),
                   onTap: () {
-                    // TODO: Navigate ke Profile
                     Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -105,7 +152,7 @@ class LeftDrawer extends StatelessWidget {
             ),
             onTap: () async {
               final response = await request.logout(
-                "http://localhost:8000/auth/logout/",
+                "http://127.0.0.1:8000/auth/logout/", // Pastikan URL logout benar
               );
               String message = response["message"];
               if (context.mounted) {
@@ -119,9 +166,9 @@ class LeftDrawer extends StatelessWidget {
                     MaterialPageRoute(builder: (context) => const LoginPage()),
                   );
                 } else {
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(SnackBar(content: Text(message)));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(message)),
+                  );
                 }
               }
             },

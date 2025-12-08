@@ -1,80 +1,73 @@
-//Shared Model
+// To parse this JSON data, do
+//
+//     final user = userFromJson(jsonString);
+
+import 'dart:convert';
+
+List<UserProfile> userFromJson(String str) => List<UserProfile>.from(json.decode(str).map((x) => UserProfile.fromJson(x)));
+
+String userToJson(List<UserProfile> data) => json.encode(List<dynamic>.from(data.map((x) => x.toJson())));
+
 class UserProfile {
-  final int id;
-  final String username;
-  final String email;
-  final String role;
-  final RunnerDetails? runnerDetails;
-  final OrganizerDetails? organizerDetails;
+    int id;
+    String username;
+    String email;
+    String role;  
+    Details? details;
 
-  UserProfile({
-    required this.id,
-    required this.username,
-    required this.email,
-    required this.role,
-    this.runnerDetails,
-    this.organizerDetails,
-  });
+    UserProfile({
+        required this.id,
+        required this.username,
+        required this.email,
+        required this.role,
+        required this.details,
+    });
 
-  factory UserProfile.fromJson(Map<String, dynamic> json) {
-    RunnerDetails? runnerData;
-    OrganizerDetails? organizerData;
-
-    if (json['details'] != null) {
-      if (json['role'] == 'runner') {
-        runnerData = RunnerDetails.fromJson(json['details']);
-      } else if (json['role'] == 'event_organizer') {
-        organizerData = OrganizerDetails.fromJson(json['details']);
-      }
-    }
-
-    return UserProfile(
-      id: json['id'],
-      username: json['username'],
-      email: json['email'],
-      role: json['role'],
-      runnerDetails: runnerData,
-      organizerDetails: organizerData,
+    factory UserProfile.fromJson(Map<String, dynamic> json) => UserProfile(
+        id: json["id"],
+        username: json["username"],
+        email: json["email"],
+        role: json["role"],
+        details: json["details"] == null ? null : Details.fromJson(json["details"]),
     );
-  }
+
+    Map<String, dynamic> toJson() => {
+        "id": id,
+        "username": username,
+        "email": email,
+        "role": role,
+        "details": details?.toJson(),
+    };
 }
 
-class RunnerDetails {
-  final String baseLocation;
-  final int coin;
+class Details {
+    String baseLocation;
+    int coin;
+    String? profilePicture;
+    int? totalEvents;
+    int? rating;
 
-  RunnerDetails({required this.baseLocation, required this.coin});
+    Details({
+        required this.baseLocation,
+        required this.coin,
+        this.profilePicture,
+        this.totalEvents,
+        this.rating,
+    });
 
-  factory RunnerDetails.fromJson(Map<String, dynamic> json) {
-    return RunnerDetails(
-      baseLocation: json['base_location'] ?? '',
-      coin: json['coin'] ?? 0,
+    factory Details.fromJson(Map<String, dynamic> json) => Details(
+        baseLocation: json["base_location"],
+        coin: json["coin"],
+        profilePicture: json["profile_picture"],
+        totalEvents: json["total_events"],
+        rating: json["rating"],
     );
-  }
-}
 
-class OrganizerDetails {
-  final String baseLocation;
-  final String profilePicture;
-  final int totalEvents;
-  final double rating;
-  final int coin;
-
-  OrganizerDetails({
-    required this.baseLocation,
-    required this.profilePicture,
-    required this.totalEvents,
-    required this.rating,
-    required this.coin,
-  });
-
-  factory OrganizerDetails.fromJson(Map<String, dynamic> json) {
-    return OrganizerDetails(
-      baseLocation: json['base_location'] ?? '',
-      profilePicture: json['profile_picture'] ?? '',
-      totalEvents: json['total_events'] ?? 0,
-      rating: (json['rating'] as num?)?.toDouble() ?? 0.0,
-      coin: json['coin'] ?? 0,
-    );
-  }
+    Map<String, dynamic> toJson() => {
+        "base_location": baseLocation,
+        "coin": coin,
+        "profile_picture": profilePicture,
+        "total_events": totalEvents,
+        "rating": rating,
+    };
 }

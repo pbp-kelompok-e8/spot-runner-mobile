@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:pbp_django_auth/pbp_django_auth.dart';
 import 'package:provider/provider.dart';
+import 'package:spot_runner_mobile/core/widgets/left_drawer.dart';
 
 // Model sederhana untuk simulasi data pengguna
 class UserProfile {
@@ -50,12 +51,6 @@ class ProfileScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.menu, color: primaryBlue),
-          onPressed: () {
-            // Logika untuk membuka drawer
-          },
-        ),
         centerTitle: true,
         title: Row(
           mainAxisSize: MainAxisSize.min,
@@ -73,6 +68,7 @@ class ProfileScreen extends StatelessWidget {
           ],
         ),
       ),
+      drawer: const LeftDrawer(),
       body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(20.0),
