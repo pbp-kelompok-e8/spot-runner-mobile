@@ -7,7 +7,7 @@ import 'package:provider/provider.dart';
 import 'package:pbp_django_auth/pbp_django_auth.dart';
 
 class EditEventFormPage extends StatefulWidget {
-  final Map<String, dynamic> event; 
+  final Map<String, dynamic> event;
 
   const EditEventFormPage({super.key, required this.event});
 
@@ -32,28 +32,30 @@ class _EditEventFormPageState extends State<EditEventFormPage> {
   final TextEditingController _eventDateController = TextEditingController();
   final TextEditingController _deadlineController = TextEditingController();
 
- @override
+  @override
   void initState() {
     super.initState();
     final df = DateFormat('yyyy-MM-dd HH:mm');
-    
-    final data = widget.event; 
+
+    final data = widget.event;
 
     _eventName = data['name'] ?? "";
     _description = data['description'] ?? "";
     _totalParticipants = data['capacity'] ?? 0;
-    
+
     String loc = data['location'] ?? "jakarta_barat";
     _location = _cities.contains(loc) ? loc : _cities[0];
 
-    _image = data['image'] ?? ""; 
+    _image = data['image'] ?? "";
     _image2 = data['image2'] ?? "";
     _image3 = data['image3'] ?? "";
     _contactPerson = data['contact'] ?? "";
     _coin = data['coin'] ?? 0;
 
-    if (data['event_date'] != null) _eventDate = DateTime.parse(data['event_date']);
-    if (data['regist_deadline'] != null) _registDeadline = DateTime.parse(data['regist_deadline']);
+    if (data['event_date'] != null)
+      _eventDate = DateTime.parse(data['event_date']);
+    if (data['regist_deadline'] != null)
+      _registDeadline = DateTime.parse(data['regist_deadline']);
 
     if (data['event_categories'] != null) {
       _selectedCategories = List<String>.from(data['event_categories']);
@@ -80,7 +82,7 @@ class _EditEventFormPageState extends State<EditEventFormPage> {
     required ValueChanged<DateTime> onPicked,
     required TextEditingController controller,
   }) async {
-    final Color myColor = const Color(0xFF1D4ED8); 
+    final Color myColor = const Color(0xFF1D4ED8);
 
     final DateTime? datePart = await showDatePicker(
       context: context,
@@ -91,14 +93,12 @@ class _EditEventFormPageState extends State<EditEventFormPage> {
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: ColorScheme.light(
-              primary: myColor, 
-              onPrimary: Colors.white, 
-              onSurface: Colors.black, 
+              primary: myColor,
+              onPrimary: Colors.white,
+              onSurface: Colors.black,
             ),
             textButtonTheme: TextButtonThemeData(
-              style: TextButton.styleFrom(
-                foregroundColor: myColor,
-              ),
+              style: TextButton.styleFrom(foregroundColor: myColor),
             ),
           ),
           child: child!,
@@ -108,41 +108,51 @@ class _EditEventFormPageState extends State<EditEventFormPage> {
     );
 
     if (datePart != null) {
-        if (!context.mounted) return;
+      if (!context.mounted) return;
 
-        final TimeOfDay? timePart = await showTimePicker(
-          context: context,
-          initialTime: TimeOfDay.fromDateTime(initialDate),
-          builder: (context, child) {
-            return Theme(
-              data: Theme.of(context).copyWith(
-                colorScheme: ColorScheme.light(
-                  primary: myColor, 
-                  onPrimary: Colors.white,
-                  onSurface: Colors.black,
-                ),
-                timePickerTheme: TimePickerThemeData(
-                  dialHandColor: myColor,
-                  hourMinuteColor: MaterialStateColor.resolveWith((states) =>
-                      states.contains(MaterialState.selected) ? myColor : Colors.grey.shade200),
-                  hourMinuteTextColor: MaterialStateColor.resolveWith((states) =>
-                      states.contains(MaterialState.selected) ? Colors.white : Colors.black),
-                  dayPeriodColor: MaterialStateColor.resolveWith((states) =>
-                      states.contains(MaterialState.selected) ? myColor : Colors.transparent),
-                  dayPeriodTextColor: MaterialStateColor.resolveWith((states) =>
-                      states.contains(MaterialState.selected) ? Colors.white : Colors.black87),
-                  dayPeriodBorderSide: BorderSide(color: myColor),
-                ),
-                textButtonTheme: TextButtonThemeData(
-                  style: TextButton.styleFrom(
-                    foregroundColor: myColor,
-                  ),
-                ),
+      final TimeOfDay? timePart = await showTimePicker(
+        context: context,
+        initialTime: TimeOfDay.fromDateTime(initialDate),
+        builder: (context, child) {
+          return Theme(
+            data: Theme.of(context).copyWith(
+              colorScheme: ColorScheme.light(
+                primary: myColor,
+                onPrimary: Colors.white,
+                onSurface: Colors.black,
               ),
-              child: child!,
-            );
-          },
-        );
+              timePickerTheme: TimePickerThemeData(
+                dialHandColor: myColor,
+                hourMinuteColor: MaterialStateColor.resolveWith(
+                  (states) => states.contains(MaterialState.selected)
+                      ? myColor
+                      : Colors.grey.shade200,
+                ),
+                hourMinuteTextColor: MaterialStateColor.resolveWith(
+                  (states) => states.contains(MaterialState.selected)
+                      ? Colors.white
+                      : Colors.black,
+                ),
+                dayPeriodColor: MaterialStateColor.resolveWith(
+                  (states) => states.contains(MaterialState.selected)
+                      ? myColor
+                      : Colors.transparent,
+                ),
+                dayPeriodTextColor: MaterialStateColor.resolveWith(
+                  (states) => states.contains(MaterialState.selected)
+                      ? Colors.white
+                      : Colors.black87,
+                ),
+                dayPeriodBorderSide: BorderSide(color: myColor),
+              ),
+              textButtonTheme: TextButtonThemeData(
+                style: TextButton.styleFrom(foregroundColor: myColor),
+              ),
+            ),
+            child: child!,
+          );
+        },
+      );
 
       if (timePart != null) {
         final DateTime combined = DateTime(
@@ -179,7 +189,7 @@ class _EditEventFormPageState extends State<EditEventFormPage> {
     "5k",
     "10k",
     "half_marathon",
-    "full_marathon"
+    "full_marathon",
   ];
   List<String> _selectedCategories = [];
 
@@ -319,7 +329,7 @@ class _EditEventFormPageState extends State<EditEventFormPage> {
 
                         _buildInputLabel("Location"),
                         DropdownButtonFormField<String>(
-                          value: _location,                           
+                          value: _location,
                           decoration: _buildInputDecoration(
                             "Select Location",
                             suffixIcon: const Icon(Icons.location_on_outlined),
@@ -444,7 +454,7 @@ class _EditEventFormPageState extends State<EditEventFormPage> {
                         ),
                         const SizedBox(height: 16),
 
-                         _buildInputLabel("Coin Reward"),
+                        _buildInputLabel("Coin Reward"),
                         TextFormField(
                           initialValue: _coin.toString(),
                           decoration: _buildInputDecoration(
@@ -453,8 +463,7 @@ class _EditEventFormPageState extends State<EditEventFormPage> {
                           ),
                           keyboardType: TextInputType.number,
                           onChanged: (value) => setState(
-                            () => _coin =
-                                int.tryParse(value ?? '') ?? 0,
+                            () => _coin = int.tryParse(value ?? '') ?? 0,
                           ),
                           validator: (value) {
                             if (value == null || value.isEmpty)
@@ -478,14 +487,18 @@ class _EditEventFormPageState extends State<EditEventFormPage> {
                                     height: 24,
                                     width: 24,
                                     child: Checkbox(
-                                      value: _selectedCategories.contains(category),
+                                      value: _selectedCategories.contains(
+                                        category,
+                                      ),
                                       activeColor: const Color(0xFF1D4ED8),
                                       onChanged: (bool? value) {
                                         setState(() {
                                           if (value == true) {
                                             _selectedCategories.add(category);
                                           } else {
-                                            _selectedCategories.remove(category);
+                                            _selectedCategories.remove(
+                                              category,
+                                            );
                                           }
                                         });
                                       },
@@ -494,8 +507,13 @@ class _EditEventFormPageState extends State<EditEventFormPage> {
                                   const SizedBox(width: 12),
                                   Text(
                                     category[0].toUpperCase() +
-                                        category.substring(1).replaceAll("_", " "),
-                                    style: const TextStyle(fontSize: 15, color: Colors.black87),
+                                        category
+                                            .substring(1)
+                                            .replaceAll("_", " "),
+                                    style: const TextStyle(
+                                      fontSize: 15,
+                                      color: Colors.black87,
+                                    ),
                                   ),
                                 ],
                               ),
@@ -566,11 +584,13 @@ class _EditEventFormPageState extends State<EditEventFormPage> {
                         // Tampilkan pesan error jika kosong
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
-                            content: Text("Please select at least one category."),
+                            content: Text(
+                              "Please select at least one category.",
+                            ),
                             backgroundColor: Colors.red,
                           ),
                         );
-                        return; 
+                        return;
                       }
                       if (_formKey.currentState!.validate()) {
                         // Tampilkan loading
@@ -578,7 +598,7 @@ class _EditEventFormPageState extends State<EditEventFormPage> {
                           const SnackBar(content: Text('Sending data...')),
                         );
                         String id = widget.event['id'].toString();
-                        
+
                         try {
                           final response = await request.postJson(
                             'http://localhost:8000/event/edit-flutter/$id/',
@@ -590,7 +610,8 @@ class _EditEventFormPageState extends State<EditEventFormPage> {
                               "image2": _image2,
                               "image3": _image3,
                               "event_date": _eventDate.toIso8601String(),
-                              "regist_deadline": _registDeadline.toIso8601String(),
+                              "regist_deadline": _registDeadline
+                                  .toIso8601String(),
                               "contact": _contactPerson,
                               "capacity": _totalParticipants,
                               "coin": _coin,
@@ -611,7 +632,9 @@ class _EditEventFormPageState extends State<EditEventFormPage> {
                             } else {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
-                                  content: Text("Failed: ${response['message']}"),
+                                  content: Text(
+                                    "Failed: ${response['message']}",
+                                  ),
                                   backgroundColor: Colors.red,
                                 ),
                               );
@@ -631,7 +654,10 @@ class _EditEventFormPageState extends State<EditEventFormPage> {
                     },
                     child: const Text(
                       "Edit",
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ),

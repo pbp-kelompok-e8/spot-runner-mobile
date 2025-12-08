@@ -56,7 +56,7 @@ class _EventFormPageState extends State<EventFormPage> {
     required ValueChanged<DateTime> onPicked,
     required TextEditingController controller,
   }) async {
-    final Color myColor = const Color(0xFF1D4ED8); 
+    final Color myColor = const Color(0xFF1D4ED8);
 
     final DateTime? datePart = await showDatePicker(
       context: context,
@@ -67,14 +67,12 @@ class _EventFormPageState extends State<EventFormPage> {
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: ColorScheme.light(
-              primary: myColor, 
-              onPrimary: Colors.white, 
-              onSurface: Colors.black, 
+              primary: myColor,
+              onPrimary: Colors.white,
+              onSurface: Colors.black,
             ),
             textButtonTheme: TextButtonThemeData(
-              style: TextButton.styleFrom(
-                foregroundColor: myColor, 
-              ),
+              style: TextButton.styleFrom(foregroundColor: myColor),
             ),
           ),
           child: child!,
@@ -83,41 +81,51 @@ class _EventFormPageState extends State<EventFormPage> {
     );
 
     if (datePart != null) {
-        if (!context.mounted) return;
+      if (!context.mounted) return;
 
-        final TimeOfDay? timePart = await showTimePicker(
-          context: context,
-          initialTime: TimeOfDay.fromDateTime(initialDate),
-          builder: (context, child) {
-            return Theme(
-              data: Theme.of(context).copyWith(
-                colorScheme: ColorScheme.light(
-                  primary: myColor, 
-                  onPrimary: Colors.white,
-                  onSurface: Colors.black,
-                ),
-                timePickerTheme: TimePickerThemeData(
-                  dialHandColor: myColor,
-                  hourMinuteColor: MaterialStateColor.resolveWith((states) =>
-                      states.contains(MaterialState.selected) ? myColor : Colors.grey.shade200),
-                  hourMinuteTextColor: MaterialStateColor.resolveWith((states) =>
-                      states.contains(MaterialState.selected) ? Colors.white : Colors.black),
-                  dayPeriodColor: MaterialStateColor.resolveWith((states) =>
-                      states.contains(MaterialState.selected) ? myColor : Colors.transparent),
-                  dayPeriodTextColor: MaterialStateColor.resolveWith((states) =>
-                      states.contains(MaterialState.selected) ? Colors.white : Colors.black87),
-                  dayPeriodBorderSide: BorderSide(color: myColor),
-                ),
-                textButtonTheme: TextButtonThemeData(
-                  style: TextButton.styleFrom(
-                    foregroundColor: myColor,
-                  ),
-                ),
+      final TimeOfDay? timePart = await showTimePicker(
+        context: context,
+        initialTime: TimeOfDay.fromDateTime(initialDate),
+        builder: (context, child) {
+          return Theme(
+            data: Theme.of(context).copyWith(
+              colorScheme: ColorScheme.light(
+                primary: myColor,
+                onPrimary: Colors.white,
+                onSurface: Colors.black,
               ),
-              child: child!,
-            );
-          },
-        );
+              timePickerTheme: TimePickerThemeData(
+                dialHandColor: myColor,
+                hourMinuteColor: MaterialStateColor.resolveWith(
+                  (states) => states.contains(MaterialState.selected)
+                      ? myColor
+                      : Colors.grey.shade200,
+                ),
+                hourMinuteTextColor: MaterialStateColor.resolveWith(
+                  (states) => states.contains(MaterialState.selected)
+                      ? Colors.white
+                      : Colors.black,
+                ),
+                dayPeriodColor: MaterialStateColor.resolveWith(
+                  (states) => states.contains(MaterialState.selected)
+                      ? myColor
+                      : Colors.transparent,
+                ),
+                dayPeriodTextColor: MaterialStateColor.resolveWith(
+                  (states) => states.contains(MaterialState.selected)
+                      ? Colors.white
+                      : Colors.black87,
+                ),
+                dayPeriodBorderSide: BorderSide(color: myColor),
+              ),
+              textButtonTheme: TextButtonThemeData(
+                style: TextButton.styleFrom(foregroundColor: myColor),
+              ),
+            ),
+            child: child!,
+          );
+        },
+      );
 
       if (timePart != null) {
         final DateTime combined = DateTime(
@@ -154,7 +162,7 @@ class _EventFormPageState extends State<EventFormPage> {
     "5k",
     "10k",
     "half_marathon",
-    "full_marathon"
+    "full_marathon",
   ];
   final List<String> _selectedCategories = [];
 
@@ -406,7 +414,7 @@ class _EventFormPageState extends State<EventFormPage> {
                         ),
                         const SizedBox(height: 16),
 
-                         _buildInputLabel("Coin Reward"),
+                        _buildInputLabel("Coin Reward"),
                         TextFormField(
                           decoration: _buildInputDecoration(
                             "0",
@@ -414,15 +422,16 @@ class _EventFormPageState extends State<EventFormPage> {
                           ),
                           keyboardType: TextInputType.number,
                           onChanged: (value) => setState(
-                            () => _coin =
-                                int.tryParse(value ?? '') ?? 0,
+                            () => _coin = int.tryParse(value ?? '') ?? 0,
                           ),
                           validator: (value) {
-                            if (value == null || value.isEmpty)
+                            if (value == null || value.isEmpty) {
                               return "Required";
-                            final int? participants = int.tryParse(value);
-                            if (participants == null || participants < 0)
+                            }
+                            final int? coin = int.tryParse(value);
+                            if (coin == null || coin < 0) {
                               return "Invalid number";
+                            }
                             return null;
                           },
                         ),
@@ -439,14 +448,18 @@ class _EventFormPageState extends State<EventFormPage> {
                                     height: 24,
                                     width: 24,
                                     child: Checkbox(
-                                      value: _selectedCategories.contains(category),
+                                      value: _selectedCategories.contains(
+                                        category,
+                                      ),
                                       activeColor: const Color(0xFF1D4ED8),
                                       onChanged: (bool? value) {
                                         setState(() {
                                           if (value == true) {
                                             _selectedCategories.add(category);
                                           } else {
-                                            _selectedCategories.remove(category);
+                                            _selectedCategories.remove(
+                                              category,
+                                            );
                                           }
                                         });
                                       },
@@ -455,8 +468,13 @@ class _EventFormPageState extends State<EventFormPage> {
                                   const SizedBox(width: 12),
                                   Text(
                                     category[0].toUpperCase() +
-                                        category.substring(1).replaceAll("_", " "),
-                                    style: const TextStyle(fontSize: 15, color: Colors.black87),
+                                        category
+                                            .substring(1)
+                                            .replaceAll("_", " "),
+                                    style: const TextStyle(
+                                      fontSize: 15,
+                                      color: Colors.black87,
+                                    ),
                                   ),
                                 ],
                               ),
@@ -526,32 +544,36 @@ class _EventFormPageState extends State<EventFormPage> {
                         // Tampilkan pesan error jika kosong
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
-                            content: Text("Please select at least one category."),
+                            content: Text(
+                              "Please select at least one category.",
+                            ),
                             backgroundColor: Colors.red,
                           ),
                         );
-                        return; 
+                        return;
                       }
                       if (_formKey.currentState!.validate()) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(content: Text('Sending data...')),
                         );
                         try {
-                          final response = await request.postJson('http://localhost:8000/event/create-flutter/',
-                          jsonEncode({
+                          final response = await request.postJson(
+                            'http://localhost:8000/event/create-flutter/',
+                            jsonEncode({
                               "name": _eventName,
                               "description": _description,
                               "location": _location,
-                              "image1": _image, 
+                              "image1": _image,
                               "image2": _image2,
                               "image3": _image3,
                               "event_date": _eventDate.toIso8601String(),
-                              "regist_deadline": _registDeadline.toIso8601String(),
+                              "regist_deadline": _registDeadline
+                                  .toIso8601String(),
                               "contact": _contactPerson,
                               "capacity": _totalParticipants,
                               "coin": _coin,
-                              "total_participans": 0, 
-                              "categories": _selectedCategories, 
+                              "total_participans": 0,
+                              "categories": _selectedCategories,
                             }),
                           );
 
@@ -565,12 +587,16 @@ class _EventFormPageState extends State<EventFormPage> {
                               );
                               Navigator.pushReplacement(
                                 context,
-                                MaterialPageRoute(builder: (context) => const EventListPage()),
+                                MaterialPageRoute(
+                                  builder: (context) => const EventListPage(),
+                                ),
                               );
                             } else {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
-                                  content: Text("Failed: ${response['message']}"),
+                                  content: Text(
+                                    "Failed: ${response['message']}",
+                                  ),
                                   backgroundColor: Colors.red,
                                 ),
                               );
@@ -590,7 +616,10 @@ class _EventFormPageState extends State<EventFormPage> {
                     },
                     child: const Text(
                       "Create Event",
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ),

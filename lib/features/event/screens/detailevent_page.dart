@@ -40,10 +40,7 @@ class _EventDetailPageState extends State<EventDetailPage> {
     );
     final request = context.read<CookieRequest>();
     try {
-      final response = await request.post(
-        url.toString(),
-        {},
-      );
+      final response = await request.post(url.toString(), {});
       if (response['status'] == 'success' || response['message'] == 'success') {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -52,7 +49,7 @@ class _EventDetailPageState extends State<EventDetailPage> {
               backgroundColor: Colors.green,
             ),
           );
-          Navigator.pop(context); 
+          Navigator.pop(context);
         }
       } else {
         if (mounted) {
@@ -107,6 +104,13 @@ class _EventDetailPageState extends State<EventDetailPage> {
           final List<dynamic> categories = event['event_categories'] ?? [];
           final dynamic sessionUserId = request.jsonData['user_id'];
           final String sessionUsername = request.jsonData['username'] ?? '';
+          Duration diff = eventDate.difference(DateTime.now());
+          if (diff.isNegative) {
+            diff = Duration.zero;
+          }
+          String days = diff.inDays.toString();
+          String hours = (diff.inHours % 24).toString();
+          String minutes = (diff.inMinutes % 60).toString();
           dynamic eventOwnerId;
           String eventOwnerName = '';
           if (event['user_eo'] is Map) {
@@ -137,9 +141,7 @@ class _EventDetailPageState extends State<EventDetailPage> {
                 expandedHeight: hasImage ? 200.0 : null,
                 pinned: true,
                 backgroundColor: Colors.white,
-                elevation: hasImage
-                    ? 0
-                    : 2, 
+                elevation: hasImage ? 0 : 2,
                 flexibleSpace: hasImage
                     ? FlexibleSpaceBar(
                         background: Image.network(
@@ -155,10 +157,7 @@ class _EventDetailPageState extends State<EventDetailPage> {
                 leading: Container(
                   margin: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: hasImage
-                        ? Colors.white
-                        : Colors
-                              .transparent,
+                    color: hasImage ? Colors.white : Colors.transparent,
                     shape: BoxShape.circle,
                   ),
                   child: IconButton(
@@ -310,11 +309,11 @@ class _EventDetailPageState extends State<EventDetailPage> {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                _buildTimeBox("99", "Days"),
+                                _buildTimeBox(days, "Days"),
                                 const SizedBox(width: 8),
-                                _buildTimeBox("23", "Hours"),
+                                _buildTimeBox(hours, "Hours"),
                                 const SizedBox(width: 8),
-                                _buildTimeBox("59", "Mins"),
+                                _buildTimeBox(minutes, "Mins"),
                               ],
                             ),
                             const SizedBox(height: 8),
@@ -466,7 +465,6 @@ class _EventDetailPageState extends State<EventDetailPage> {
     );
   }
 
-
   Widget _buildInfoRow(IconData icon, String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
@@ -591,7 +589,7 @@ class _EventDetailPageState extends State<EventDetailPage> {
               foregroundColor: Colors.white,
             ),
             onPressed: () {
-              Navigator.pop(ctx); 
+              Navigator.pop(ctx);
               _deleteEvent(widget.eventId);
             },
             child: const Text("Delete"),
