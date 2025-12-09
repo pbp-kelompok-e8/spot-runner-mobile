@@ -278,7 +278,7 @@ class _RegisterPageState extends State<RegisterPage> {
 
                           try {
                             final response = await request.postJson(
-                              "http://localhost:8000/auth/register/", 
+                              "http://127.0.0.1:8000/auth/register/", 
                               jsonEncode(data),
                             );
 

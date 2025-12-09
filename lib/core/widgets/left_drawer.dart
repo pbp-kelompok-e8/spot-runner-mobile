@@ -64,32 +64,59 @@ class LeftDrawer extends StatelessWidget {
                   title: const Text('Dashboard'),
                   onTap: () async {
                     // Tampilkan loading snackbar agar user tahu proses sedang berjalan
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text("Loading Dashboard data..."),
-                        duration: Duration(seconds: 1),
-                      ),
-                    );
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text("Loading Dashboard data..."),
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                    }
 
                     try {
                       // 1. Fetch Data User Profile
-                      // TODO: Ganti URL sesuai endpoint Django Anda (contoh: /api/profile/)
                       final userResponse = await request.get(
-                          'http://127.0.0.1:8000/api/user-profile/' 
+                          'http://127.0.0.1:8000/api/profile/'
                       );
                       
-                      // Konversi response ke Model
-                      // Kita pakai jsonEncode karena userFromJson butuh String, 
-                      // sedangkan request.get mengembalikan dynamic/map
-                      List<UserProfile> users = userFromJson(jsonEncode(userResponse));
+                      print('DEBUG - User Response: $userResponse');
+                      print('DEBUG - User Response Type: ${userResponse.runtimeType}');
+
+                      // Parse user profile - handle both single object and list
+                      UserProfile userProfile;
+                      if (userResponse is List && userResponse.isNotEmpty) {
+                        // Response adalah list, ambil elemen pertama
+                        userProfile = UserProfile.fromJson(
+                          Map<String, dynamic>.from(userResponse[0] as Map)
+                        );
+                      } else if (userResponse is Map) {
+                        // Response adalah single object
+                        userProfile = UserProfile.fromJson(
+                          Map<String, dynamic>.from(userResponse)
+                        );
+                      } else {
+                        throw Exception("Invalid user profile response format: ${userResponse.runtimeType}");
+                      }
 
                       // 2. Fetch Data Events
-                      // TODO: Ganti URL sesuai endpoint Django Anda (contoh: /api/events/)
                       final eventResponse = await request.get(
                           'http://127.0.0.1:8000/api/events/'
                       );
                       
-                      List<EventDetail> events = eventDetailFromJson(jsonEncode(eventResponse));
+                      print('DEBUG - Event Response: $eventResponse');
+                      print('DEBUG - Event Response Type: ${eventResponse.runtimeType}');
+
+                      // Parse events
+                      List<EventDetail> events = [];
+                      if (eventResponse is List) {
+                        events = eventResponse
+                            .map((item) => EventDetail.fromJson(
+                              Map<String, dynamic>.from(item as Map)
+                            ))
+                            .toList();
+                      } else {
+                        throw Exception("Invalid events response format: ${eventResponse.runtimeType}");
+                      }
 
                       // 3. Navigasi ke DashboardScreen dengan membawa data
                       if (context.mounted) {
@@ -97,19 +124,22 @@ class LeftDrawer extends StatelessWidget {
                           context,
                           MaterialPageRoute(
                             builder: (context) => DashboardScreen(
-                              userProfile: users.isNotEmpty ? users[0] : throw Exception("User data empty"), // Asumsi endpoint mengembalikan list user
+                              userProfile: userProfile,
                               events: events,
                             ),
                           ),
                         );
                       }
-                    } catch (e) {
+                    } catch (e, stackTrace) {
                       // Error handling jika fetch gagal
+                      print('ERROR: $e');
+                      print('STACK TRACE: $stackTrace');
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text("Gagal memuat data: $e"),
+                            content: Text("Gagal memuat data: ${e.toString()}"),
                             backgroundColor: Colors.red,
+                            duration: const Duration(seconds: 3),
                           ),
                         );
                       }

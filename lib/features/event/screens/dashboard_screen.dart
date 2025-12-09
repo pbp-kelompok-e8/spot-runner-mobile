@@ -1,23 +1,32 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart'; // Pastikan add dependency intl di pubspec.yaml
+import 'package:intl/intl.dart';
 import 'package:spot_runner_mobile/core/models/event_entry.dart';
 import 'package:spot_runner_mobile/core/models/user_entry.dart';
 import 'package:spot_runner_mobile/core/widgets/left_drawer.dart';
 
 class DashboardScreen extends StatelessWidget {
-  final UserProfile userProfile;
+  final UserProfile? userProfile; // Ubah menjadi nullable
   final List<EventDetail> events;
 
   const DashboardScreen({
     Key? key,
-    required this.userProfile,
+    required this.userProfile, // Bisa null sekarang
     required this.events,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    // Buat safe user profile untuk menghindari null
+    final safeUserProfile = userProfile ?? UserProfile(
+      id: 0,
+      username: 'Guest',
+      email: '',
+      role: 'guest',
+      details: null,
+    );
+
     return Scaffold(
-      backgroundColor: Colors.grey[50], // Background agak abu terang
+      backgroundColor: Colors.grey[50],
       appBar: _buildAppBar(),
       drawer: const LeftDrawer(),
       body: SingleChildScrollView(
@@ -25,10 +34,10 @@ class DashboardScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildProfileSection(),
+            _buildProfileSection(safeUserProfile),
             const SizedBox(height: 24),
             const Text(
-              "Your Event",
+              "Your Events",
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -38,17 +47,50 @@ class DashboardScreen extends StatelessWidget {
             const SizedBox(height: 16),
             _buildCreateEventButton(),
             const SizedBox(height: 24),
-            ListView.separated(
-              physics: const NeverScrollableScrollPhysics(), // Scroll via SingleChild
-              shrinkWrap: true,
-              itemCount: events.length,
-              separatorBuilder: (context, index) => const SizedBox(height: 16),
-              itemBuilder: (context, index) {
-                return EventCard(event: events[index]);
-              },
-            ),
+            
+            // Tampilkan events atau pesan kosong
+            if (events.isEmpty)
+              _buildEmptyEventsState()
+            else
+              ListView.separated(
+                physics: const NeverScrollableScrollPhysics(),
+                shrinkWrap: true,
+                itemCount: events.length,
+                separatorBuilder: (context, index) => const SizedBox(height: 16),
+                itemBuilder: (context, index) {
+                  return EventCard(event: events[index]);
+                },
+              ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyEventsState() {
+    return Container(
+      padding: const EdgeInsets.all(40),
+      child: Column(
+        children: [
+          Icon(Icons.event_note, size: 60, color: Colors.grey[300]),
+          const SizedBox(height: 16),
+          const Text(
+            "No events yet",
+            style: TextStyle(
+              fontSize: 16,
+              color: Colors.grey,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            "Create your first event to get started",
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
       ),
     );
   }
@@ -86,11 +128,14 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  // Widget _buildDrawer() {
-  //   );
-  // }
-
-  Widget _buildProfileSection() {
+  Widget _buildProfileSection(UserProfile userProfile) {
+    // Ekstrak data dengan null safety
+    final String username = userProfile.username;
+    final String? profilePicture = userProfile.details?.profilePicture;
+    final int totalEvents = userProfile.details?.totalEvents ?? 0;
+    final double rating = userProfile.details?.rating ?? 0.0;
+    final String baseLocation = userProfile.details?.baseLocation ?? "-";
+    
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -108,21 +153,21 @@ class DashboardScreen extends StatelessWidget {
         children: [
           Row(
             children: [
-              // Profile Picture Placeholder
+              // Profile Picture
               Container(
                 width: 60,
                 height: 60,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   border: Border.all(color: Colors.green.shade100, width: 2),
-                  image: userProfile.details?.profilePicture != null
+                  image: profilePicture != null && profilePicture.isNotEmpty
                       ? DecorationImage(
-                          image: NetworkImage(userProfile.details!.profilePicture!),
+                          image: NetworkImage(profilePicture),
                           fit: BoxFit.cover,
                         )
                       : null,
                 ),
-                child: userProfile.details?.profilePicture == null
+                child: profilePicture == null || profilePicture.isEmpty
                     ? const Icon(Icons.person, color: Colors.grey, size: 30)
                     : null,
               ),
@@ -130,75 +175,136 @@ class DashboardScreen extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    "Organized By",
-                    style: TextStyle(color: Colors.grey, fontSize: 12),
+                  Text(
+                    userProfile.role == 'event_organizer' 
+                        ? "Organized By" 
+                        : "User Profile",
+                    style: const TextStyle(color: Colors.grey, fontSize: 12),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    userProfile.username,
+                    username,
                     style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                       color: Colors.black87,
                     ),
                   ),
+                  if (userProfile.role.isNotEmpty)
+                    Text(
+                      userProfile.role == 'event_organizer' 
+                          ? 'Event Organizer' 
+                          : userProfile.role == 'runner' 
+                              ? 'Runner' 
+                              : 'Guest',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.blue[700],
+                      ),
+                    ),
                 ],
               )
             ],
           ),
           const SizedBox(height: 20),
+          
           // Details List
-          _buildDetailRow(Icons.event_note, "Total Events",
-              "${userProfile.details?.totalEvents ?? 0} events"),
+          _buildDetailRow(Icons.event_note, "Total Events", 
+              "$totalEvents events"),
           const SizedBox(height: 12),
-          // Joined date is not in UserProfile model, using a hardcoded placeholder logic or generic
-          _buildDetailRow(Icons.calendar_today_outlined, "Joined", "15 Dec 2024"), 
+          
+          // Joined date - menggunakan placeholder atau bisa dari API jika ada
+          _buildDetailRow(Icons.calendar_today_outlined, "Joined", 
+              _getJoinedDate(userProfile)),
           const SizedBox(height: 12),
-          _buildDetailRow(Icons.location_on_outlined, "Base Location",
-              userProfile.details?.baseLocation ?? "-"),
+          
+          _buildDetailRow(Icons.location_on_outlined, "Base Location", 
+              baseLocation),
           
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 16.0),
             child: Divider(),
           ),
           
-          // Rating Section
-          Column(
-            children: [
-              const Text(
-                "Rating & Review",
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-              ),
-              const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.star, color: Colors.lightGreen, size: 28),
-                  const SizedBox(width: 8),
-                  RichText(
-                    text: TextSpan(
-                      style: const TextStyle(color: Colors.black),
-                      children: [
-                        TextSpan(
-                          text: "${userProfile.details?.rating ?? 0}",
-                          style: const TextStyle(
-                              fontSize: 20, fontWeight: FontWeight.bold),
-                        ),
-                        const TextSpan(
-                          text: "/5.0 rating (12 responden)",
-                          style: TextStyle(color: Colors.grey, fontSize: 12),
-                        ),
-                      ],
+          // Rating Section (hanya untuk event organizer)
+          if (userProfile.role == 'event_organizer')
+            Column(
+              children: [
+                const Text(
+                  "Rating & Review",
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.star, color: Colors.lightGreen, size: 28),
+                    const SizedBox(width: 8),
+                    RichText(
+                      text: TextSpan(
+                        style: const TextStyle(color: Colors.black),
+                        children: [
+                          TextSpan(
+                            text: rating.toStringAsFixed(1),
+                            style: const TextStyle(
+                                fontSize: 20, fontWeight: FontWeight.bold),
+                          ),
+                          const TextSpan(
+                            text: "/5.0 rating",
+                            style: TextStyle(color: Colors.grey, fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  "(Based on ${totalEvents > 0 ? totalEvents : 0} events)",
+                  style: const TextStyle(
+                    color: Colors.grey,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            )
+          else
+            Column(
+              children: [
+                const Text(
+                  "Account Type",
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.blue[50],
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    userProfile.role == 'runner' ? 'Runner Account' : 'Guest Account',
+                    style: TextStyle(
+                      color: Colors.blue[700],
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                ],
-              )
-            ],
-          )
+                ),
+              ],
+            ),
         ],
       ),
     );
+  }
+
+  String _getJoinedDate(UserProfile userProfile) {
+    // Jika ingin dinamis, bisa dari API
+    // Untuk sementara gunakan placeholder
+    if (userProfile.id == 0) {
+      return "N/A";
+    }
+    // Bisa juga menggunakan created_at dari user jika ada di model
+    return "15 Dec 2024"; // Placeholder
   }
 
   Widget _buildDetailRow(IconData icon, String label, String value) {
@@ -234,7 +340,7 @@ class DashboardScreen extends StatelessWidget {
           // Action create event
         },
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF2B65EC), // Royal Blue
+          backgroundColor: const Color(0xFF2B65EC),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(8),
           ),
@@ -264,7 +370,7 @@ class EventCard extends StatelessWidget {
     // Normalizing status string for checking
     String status = event.eventStatus.toLowerCase();
 
-    if (status.contains("on going")) {
+    if (status.contains("on going") || status.contains("ongoing")) {
       statusBgColor = Colors.blue.shade50;
       statusTextColor = Colors.blue.shade700;
       borderColor = Colors.blue.shade200;
@@ -272,10 +378,14 @@ class EventCard extends StatelessWidget {
       statusBgColor = Colors.green.shade50;
       statusTextColor = Colors.green.shade700;
       borderColor = Colors.green.shade200;
-    } else if (status.contains("canceled")) {
+    } else if (status.contains("canceled") || status.contains("cancelled")) {
       statusBgColor = Colors.red.shade50;
       statusTextColor = Colors.red.shade700;
       borderColor = Colors.red.shade200;
+    } else if (status.contains("coming soon") || status.contains("upcoming")) {
+      statusBgColor = Colors.orange.shade50;
+      statusTextColor = Colors.orange.shade700;
+      borderColor = Colors.orange.shade200;
     } else {
       // Default
       statusBgColor = Colors.grey.shade100;
@@ -301,7 +411,7 @@ class EventCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
-              event.eventStatus, // e.g. "On Going"
+              event.eventStatus,
               style: TextStyle(
                 color: statusTextColor,
                 fontWeight: FontWeight.bold,
@@ -310,6 +420,7 @@ class EventCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
+          
           // Title
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -326,42 +437,50 @@ class EventCard extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              if (status.contains("finished") || status.contains("canceled"))
+              if (status.contains("finished") || status.contains("canceled") || status.contains("cancelled"))
                 const Icon(Icons.more_vert, color: Colors.grey),
             ],
           ),
           const SizedBox(height: 16),
+          
           _buildInfoRow(Icons.calendar_today, "Date",
               DateFormat('dd MMM yyyy').format(event.eventDate)),
           const SizedBox(height: 8),
-          _buildInfoRow(Icons.location_on_outlined, "Location", event.location),
+          
+          _buildInfoRow(Icons.location_on_outlined, "Location", 
+              event.location.isNotEmpty ? event.location : "Location not set"),
           const SizedBox(height: 8),
+          
           _buildInfoRow(Icons.run_circle_outlined, "Type",
-              event.eventCategories.isNotEmpty ? event.eventCategories.first : "Event"),
+              event.eventCategories.isNotEmpty 
+                  ? event.eventCategories.first 
+                  : "Event"),
           
           const SizedBox(height: 16),
+          
           const Text(
-            "Participant ID",
+            "Event ID",
             style: TextStyle(fontSize: 12, color: Colors.grey),
           ),
           const SizedBox(height: 4),
-          // Using ID or creating a format similar to image "DFR-..."
+          
           Text(
             "ID: ${event.id}", 
             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
           ),
           
           const SizedBox(height: 16),
+          
           // Action Buttons
           Row(
             children: [
-              // Edit button only for On Going events usually, but strictly following image:
-              // Image 2 (On Going) has Edit & Delete.
-              // Image 3 (Finished) has Delete only.
-              if (status.contains("on going")) ...[
+              // Edit button hanya untuk status tertentu
+              if (status.contains("on going") || status.contains("coming soon") || status.contains("upcoming")) 
                 Expanded(
                   child: ElevatedButton.icon(
-                    onPressed: () {},
+                    onPressed: () {
+                      // Edit action
+                    },
                     icon: const Icon(Icons.edit_outlined, size: 16, color: Colors.blue),
                     label: const Text("Edit Detail", style: TextStyle(color: Colors.blue)),
                     style: ElevatedButton.styleFrom(
@@ -371,12 +490,15 @@ class EventCard extends StatelessWidget {
                     ),
                   ),
                 ),
+              
+              if (status.contains("on going") || status.contains("coming soon") || status.contains("upcoming")) 
                 const SizedBox(width: 12),
-              ],
               
               Expanded(
                 child: ElevatedButton.icon(
-                  onPressed: () {},
+                  onPressed: () {
+                    // Delete action
+                  },
                   icon: const Icon(Icons.delete_outline, size: 16, color: Colors.red),
                   label: const Text("Delete Event", style: TextStyle(color: Colors.red)),
                   style: ElevatedButton.styleFrom(
