@@ -17,11 +17,23 @@ class EventDetailPage extends StatefulWidget {
 class _EventDetailPageState extends State<EventDetailPage> {
   late Future<Map<String, dynamic>> _eventFuture;
   String? _selectedCategory;
+  Map<String, dynamic>? _eoData; 
+  bool _isEoLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _eventFuture = fetchEventDetail();
+    _eventFuture = fetchEventDetail().then((eventData) {
+      var eoId = eventData['user_eo']; 
+      if (eoId is Map) {
+        eoId = eoId['pk'] ?? eoId['id'];
+      }
+      if (eoId != null) {
+        fetchEODetail(eoId.toString());
+      }
+      
+      return eventData;
+    });
   }
 
   @override
@@ -39,6 +51,30 @@ class _EventDetailPageState extends State<EventDetailPage> {
       return response[0];
     }
     return response;
+  }
+
+  Future<void> fetchEODetail(String eoId) async {
+    final request = context.read<CookieRequest>();
+    try {
+      final response = await request.get('http://localhost:8000/event-organizer/json/'); 
+      if (response['status'] == 'success') {
+        List<dynamic> organizers = response['data'];
+        var foundEO = organizers.firstWhere(
+          (eo) => eo['user_id'].toString() == eoId,
+          orElse: () => null,
+        );
+
+        if (mounted && foundEO != null) {
+          setState(() {
+            _eoData = foundEO;
+            _isEoLoading = false;
+          });
+        }
+      }
+    } catch (e) {
+      print("Gagal ambil data EO: $e");
+      if (mounted) setState(() => _isEoLoading = false);
+    }
   }
 
   Future<void> _deleteEvent(String id) async {
@@ -350,26 +386,78 @@ class _EventDetailPageState extends State<EventDetailPage> {
                       ),
 
                       const SizedBox(height: 30),
-
-                      Row(children: [
-                        CircleAvatar(
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start, // Align top
+                        children: [
+                          CircleAvatar(
+                            radius: 20, 
                             backgroundColor: Colors.green[100],
-                            child: const Icon(Icons.person,
-                                color: Colors.green)),
-                        const SizedBox(width: 12),
-                        Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text("Organized By",
-                                  style: TextStyle(
-                                      fontSize: 12, color: Colors.grey)),
-                              Text(organizerName,
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.bold)),
-                            ])
-                      ]),
+                            backgroundImage: (_eoData != null && _eoData!['profile_picture'] != null) 
+                                ? NetworkImage(_eoData!['profile_picture']) 
+                                : null,
+                            child: (_eoData == null || _eoData!['profile_picture'] == null)
+                                ? const Icon(Icons.person, color: Colors.green, size: 20)
+                                : null,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  "Organized By", 
+                                  style: TextStyle(fontSize: 11, color: Colors.grey)
+                                ),
+                                Text(
+                                  organizerName,
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)
+                                ),
+                                
+                                const SizedBox(height: 4),
+                                if (_isEoLoading)
+                                  const SizedBox(
+                                    height: 10, 
+                                    width: 10, 
+                                    child: CircularProgressIndicator(strokeWidth: 2)
+                                  )
+                                else if (_eoData != null)
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          const Icon(Icons.location_city, size: 12, color: Colors.grey),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            _eoData!['base_location'][0].toString()[0].toUpperCase() + _eoData!['base_location'].toString().substring(1).replaceAll("_", " ") ?? '-', 
+                                            style: const TextStyle(fontSize: 11, color: Colors.black87)
+                                          ),
+                                        ],
+                                      ),
+                                      Row(
+                                        children: [
+                                          const Icon(Icons.event_available, size: 12, color: Colors.grey),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            "${_eoData!['total_events']} Events hosted", 
+                                            style: const TextStyle(fontSize: 11, color: Colors.black87)
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  )
+                                else
+                                  const Text(
+                                    "Detail EO tidak ditemukan", 
+                                    style: TextStyle(fontSize: 10, color: Colors.red)
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                       const SizedBox(height: 24),
-                      const Text("Reviews",
+                      const Text("Rating & Reviews",
                           style: TextStyle(
                               fontSize: 18, fontWeight: FontWeight.bold)),
                       const SizedBox(height: 10),
@@ -573,7 +661,6 @@ class _ImageSliderWidgetState extends State<ImageSliderWidget> {
           ),
         ),
 
-        // Tombol Back Melayang
         Positioned(
           top: 40,
           left: 10,
