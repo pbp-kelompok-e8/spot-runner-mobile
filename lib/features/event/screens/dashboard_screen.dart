@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:spot_runner_mobile/core/models/event_entry.dart';
 import 'package:spot_runner_mobile/core/models/user_entry.dart';
 import 'package:spot_runner_mobile/core/widgets/left_drawer.dart';
+import 'package:spot_runner_mobile/features/event/screens/event_form.dart';
 
 class DashboardScreen extends StatelessWidget {
   final UserProfile? userProfile;
@@ -52,7 +53,7 @@ class DashboardScreen extends StatelessWidget {
             const SizedBox(height: 16),
             
             // 3. Create Button
-            _buildCreateEventButton(),
+            _buildCreateEventButton(context),
             
             const SizedBox(height: 24),
 
@@ -237,13 +238,17 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildCreateEventButton() {
+  Widget _buildCreateEventButton(BuildContext context) {
     return SizedBox(
       width: double.infinity,
       height: 54,
       child: ElevatedButton(
         onPressed: () {
-          // Action create event
+          // Navigate to EventFormPage
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const EventFormPage()),
+          );
         },
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFF1D4ED8), // Royal Blue
