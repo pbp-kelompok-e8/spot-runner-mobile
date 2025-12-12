@@ -538,8 +538,6 @@ class _EventFormPageState extends State<EventFormPage> {
                       ),
                     ),
                     onPressed: () async {
-                      print("🔥 User logged in: ${request.loggedIn}");
-                      print("🔥 Cookies: ${request.cookies}");
                       if (_selectedCategories.isEmpty) {
                         // Tampilkan pesan error jika kosong
                         ScaffoldMessenger.of(context).showSnackBar(
@@ -616,6 +614,31 @@ class _EventFormPageState extends State<EventFormPage> {
                     },
                     child: const Text(
                       "Create Event",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 16), 
+                SizedBox(
+                  width: double.infinity,
+                  height: 56,
+                  child: TextButton(
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.grey[700],
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        side: BorderSide(color: Colors.grey.shade300),
+                      ),
+                    ),
+                    onPressed: () {
+                      Navigator.pop(context);
+                    },
+                    child: const Text(
+                      "Cancel",
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,

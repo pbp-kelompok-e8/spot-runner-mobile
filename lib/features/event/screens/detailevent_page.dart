@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'dart:async';
 import 'package:provider/provider.dart';
 import 'package:pbp_django_auth/pbp_django_auth.dart';
 import 'package:spot_runner_mobile/features/event/screens/editevent_form.dart';
@@ -15,11 +16,17 @@ class EventDetailPage extends StatefulWidget {
 
 class _EventDetailPageState extends State<EventDetailPage> {
   late Future<Map<String, dynamic>> _eventFuture;
+  String? _selectedCategory;
 
   @override
   void initState() {
     super.initState();
     _eventFuture = fetchEventDetail();
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
   }
 
   Future<Map<String, dynamic>> fetchEventDetail() async {
@@ -41,7 +48,8 @@ class _EventDetailPageState extends State<EventDetailPage> {
     final request = context.read<CookieRequest>();
     try {
       final response = await request.post(url.toString(), {});
-      if (response['status'] == 'success' || response['message'] == 'success') {
+      if (response['status'] == 'success' ||
+          response['message'] == 'success') {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -88,10 +96,22 @@ class _EventDetailPageState extends State<EventDetailPage> {
           }
 
           final event = snapshot.data!;
-          String? rawImage = event['image'];
-          bool hasImage =
-              rawImage != null && rawImage.isNotEmpty && rawImage != "null";
-          final String imageUrl = hasImage ? rawImage! : '';
+
+          // --- LOGIKA GAMBAR ---
+          List<String> imageUrls = [];
+          void addImageIfValid(dynamic img) {
+            if (img != null &&
+                img.toString().isNotEmpty &&
+                img.toString() != "null") {
+              imageUrls.add(img.toString());
+            }
+          }
+
+          addImageIfValid(event['image']);
+          addImageIfValid(event['image_2'] ?? event['image2']);
+          addImageIfValid(event['image_3'] ?? event['image3']);
+
+          bool hasImage = imageUrls.isNotEmpty;
 
           final String title = event['name'] ?? 'No Title';
           final String dateStr =
@@ -104,13 +124,7 @@ class _EventDetailPageState extends State<EventDetailPage> {
           final List<dynamic> categories = event['event_categories'] ?? [];
           final dynamic sessionUserId = request.jsonData['user_id'];
           final String sessionUsername = request.jsonData['username'] ?? '';
-          Duration diff = eventDate.difference(DateTime.now());
-          if (diff.isNegative) {
-            diff = Duration.zero;
-          }
-          String days = diff.inDays.toString();
-          String hours = (diff.inHours % 24).toString();
-          String minutes = (diff.inMinutes % 60).toString();
+
           dynamic eventOwnerId;
           String eventOwnerName = '';
           if (event['user_eo'] is Map) {
@@ -120,8 +134,8 @@ class _EventDetailPageState extends State<EventDetailPage> {
           } else {
             eventOwnerId = event['user_eo'];
           }
-          bool isOwner = false;
 
+          bool isOwner = false;
           if (request.loggedIn) {
             if (sessionUserId != null && eventOwnerId != null) {
               isOwner = sessionUserId.toString() == eventOwnerId.toString();
@@ -135,315 +149,232 @@ class _EventDetailPageState extends State<EventDetailPage> {
 
           final organizerData = event['user_eo'] ?? {};
           final String organizerName = organizerData['username'] ?? 'Organizer';
+
           return CustomScrollView(
             slivers: [
-              SliverAppBar(
-                expandedHeight: hasImage ? 200.0 : null,
-                pinned: true,
-                backgroundColor: Colors.white,
-                elevation: hasImage ? 0 : 2,
-                flexibleSpace: hasImage
-                    ? FlexibleSpaceBar(
-                        background: Image.network(
-                          imageUrl,
-                          fit: BoxFit.cover,
-                          errorBuilder: (ctx, err, stack) => Container(
-                            color: Colors.grey[300],
-                            child: const Icon(Icons.broken_image),
-                          ),
-                        ),
-                      )
-                    : null,
-                leading: Container(
-                  margin: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: hasImage ? Colors.white : Colors.transparent,
-                    shape: BoxShape.circle,
-                  ),
-                  child: IconButton(
-                    icon: Icon(
-                      Icons.arrow_back,
-                      color: hasImage ? Colors.black : Colors.black,
-                      size: 20,
-                    ),
-                    onPressed: () => Navigator.pop(context),
+              // --- 1. SLIDER GAMBAR ---
+              if (hasImage)
+                SliverToBoxAdapter(
+                  child: ImageSliderWidget(
+                    imageUrls: imageUrls,
+                    onBackPressed: () => Navigator.pop(context),
                   ),
                 ),
-                title: !hasImage
-                    ? Text(title, style: const TextStyle(color: Colors.black))
-                    : null,
-              ),
+
+              // --- 2. APPBAR (Jika tidak ada gambar) ---
+              if (!hasImage)
+                SliverAppBar(
+                  pinned: true,
+                  leading: IconButton(
+                    icon: const Icon(Icons.arrow_back, color: Colors.black),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                  title:
+                      Text(title, style: const TextStyle(color: Colors.black)),
+                  backgroundColor: Colors.white,
+                  elevation: 1,
+                ),
+
+              // --- 3. KONTEN DETAIL ---
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.all(12.0),
+                  padding: const EdgeInsets.all(16.0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        title,
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
+                      if (hasImage) ...[
+                        Text(
+                          title,
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 12),
+                        const SizedBox(height: 16),
+                      ],
                       if (isOwner)
                         Row(
                           children: [
                             Expanded(
-                              child: SizedBox(
-                                height: 36,
-                                child: OutlinedButton.icon(
-                                  icon: const Icon(Icons.edit, size: 14),
-                                  label: const Text(
-                                    "Edit",
-                                    style: TextStyle(fontSize: 12),
-                                  ),
-                                  style: OutlinedButton.styleFrom(
-                                    foregroundColor: Colors.blue[700],
-                                    side: BorderSide(color: Colors.blue[700]!),
-                                    padding: EdgeInsets.zero,
-                                  ),
-                                  onPressed: () async {
-                                    bool? result = await Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
+                              child: OutlinedButton.icon(
+                                icon: const Icon(Icons.edit, size: 16, color: Color(0xFF1D4ED8),),
+                                label: const Text("Edit",
+                                    style: TextStyle(color: Color(0xFF1D4ED8))),
+                              style: OutlinedButton.styleFrom(
+                                side: const BorderSide(
+                                  color: Color(0xFF1D4ED8),
+                                  width: 1.5,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                              ),
+                                onPressed: () async {
+                                  bool? result = await Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
                                         builder: (context) =>
-                                            EditEventFormPage(event: event),
-                                      ),
-                                    );
-                                    if (result == true) {
-                                      setState(() {
-                                        _eventFuture = fetchEventDetail();
-                                      });
-                                    }
-                                  },
-                                ),
+                                            EditEventFormPage(event: event)),
+                                  );
+                                  if (result == true) {
+                                    setState(() {
+                                      _eventFuture = fetchEventDetail();
+                                    });
+                                  }
+                                },
                               ),
                             ),
-                            const SizedBox(width: 8),
+                            const SizedBox(width: 10),
                             Expanded(
-                              child: SizedBox(
-                                height: 36,
-                                child: OutlinedButton.icon(
-                                  icon: const Icon(Icons.delete, size: 14),
-                                  label: const Text(
-                                    "Delete",
-                                    style: TextStyle(fontSize: 12),
-                                  ),
-                                  style: OutlinedButton.styleFrom(
-                                    foregroundColor: Colors.red[700],
-                                    side: BorderSide(color: Colors.red[700]!),
-                                    backgroundColor: Colors.red[50],
-                                    padding: EdgeInsets.zero,
-                                  ),
-                                  onPressed: () => _showDeleteDialog(context),
-                                ),
+                              child: ElevatedButton.icon(
+                                icon: const Icon(Icons.delete,
+                                    size: 16, color: Colors.white),
+                                label: const Text("Delete",
+                                    style: TextStyle(color: Colors.white)),
+                                style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.red),
+                                onPressed: () => _showDeleteDialog(context),
                               ),
                             ),
                           ],
                         ),
+                      if (isOwner) const SizedBox(height: 24),
 
-                      if (isOwner) const SizedBox(height: 20),
-                      const Text(
-                        "About This Event",
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
+                      const Text("About This Event",
+                          style: TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 12),
+                      _buildInfoRow(Icons.people_outline, "Participants",
+                          "$totalParticipants/$capacity"),
+                      _buildInfoRow(Icons.calendar_today_outlined, "Date",
+                          DateFormat('dd MMM yyyy').format(eventDate)),
+                      _buildInfoRow(Icons.location_on_outlined, "Location",
+                          location.replaceAll("_", " ")),
+                      _buildInfoRow(Icons.run_circle_outlined, "Type",
+                          categories.join(", ").replaceAll("_", " ")),
+
+                      const SizedBox(height: 24),
+                      Text(description,
+                          style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey[700],
+                              height: 1.5)),
+
+                      const SizedBox(height: 24),
+                      EventTimerWidget(
+                        targetDate: eventDate,
+                        deadlineString: event['regist_deadline'],
                       ),
+                      const SizedBox(height: 24),
+                      const Text("Select Category",
+                          style: TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.bold)),
                       const SizedBox(height: 8),
-                      _buildInfoRow(
-                        Icons.people_outline,
-                        "Participants",
-                        "$totalParticipants/$capacity",
-                      ),
-                      _buildInfoRow(
-                        Icons.calendar_today_outlined,
-                        "Date",
-                        DateFormat('dd MMM yyyy').format(eventDate),
-                      ),
-                      _buildInfoRow(
-                        Icons.location_on_outlined,
-                        "Location",
-                        location.replaceAll("_", " "),
-                      ),
-                      _buildInfoRow(
-                        Icons.run_circle_outlined,
-                        "Type",
-                        categories.join(", ").replaceAll("_", " "),
-                      ),
+                      ...categories.map((cat) {
+                        String categoryName = cat.toString();
+                        bool isSelected = _selectedCategory == categoryName;
+                        return Card(
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            side: BorderSide(
+                                color: isSelected
+                                    ? Color(0xFF1D4ED8)
+                                    : Colors.grey[300]!,
+                                width: isSelected ? 2 : 1),
+                          ),
+                          margin: const EdgeInsets.only(bottom: 8),
+                          child: InkWell(
+                            onTap: () {
+                              setState(() {
+                                if (isSelected)
+                                  _selectedCategory = null;
+                                else
+                                  _selectedCategory = categoryName;
+                              });
+                            },
+                            borderRadius: BorderRadius.circular(10),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 12),
+                              child: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                      categoryName
+                                          .toUpperCase()
+                                          .replaceAll("_", " "),
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color: isSelected
+                                              ? Color(0xFF1D4ED8)
+                                              : Colors.black)),
+                                  if (isSelected)
+                                    const Icon(Icons.check_circle,
+                                        color: Color(0xFF1D4ED8))
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      }).toList(),
 
                       const SizedBox(height: 20),
 
-                      Text(
-                        description,
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.grey[600],
-                          height: 1.4,
-                        ),
-                      ),
-
-                      const SizedBox(height: 20),
-
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          vertical: 12,
-                          horizontal: 16,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.grey[50],
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Column(
-                          children: [
-                            const Text(
-                              "Registration Open until",
-                              style: TextStyle(
-                                fontWeight: FontWeight.w600,
-                                fontSize: 13,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                _buildTimeBox(days, "Days"),
-                                const SizedBox(width: 8),
-                                _buildTimeBox(hours, "Hours"),
-                                const SizedBox(width: 8),
-                                _buildTimeBox(minutes, "Mins"),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              "Deadline: ${event['regist_deadline'] != null ? DateFormat('dd MMM, HH:mm').format(DateTime.parse(event['regist_deadline'])) : '-'}",
-                              style: const TextStyle(
-                                fontSize: 11,
-                                color: Colors.grey,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      const SizedBox(height: 20),
-
-                      const Text(
-                        "Races offered",
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      ...categories
-                          .map(
-                            (cat) => Card(
-                              margin: const EdgeInsets.only(bottom: 6),
-                              elevation: 0,
-                              shape: RoundedRectangleBorder(
-                                side: BorderSide(color: Colors.grey[300]!),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: SizedBox(
-                                height: 45,
-                                child: ListTile(
-                                  dense: true,
-                                  contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                  ),
-                                  title: Text(
-                                    cat.toString().toUpperCase().replaceAll(
-                                      "_",
-                                      " ",
-                                    ),
-                                    style: const TextStyle(fontSize: 13),
-                                  ),
-                                  trailing: Radio(
-                                    value: false,
-                                    groupValue: true,
-                                    onChanged: (val) {},
-                                  ),
-                                ),
-                              ),
-                            ),
-                          )
-                          .toList(),
-
-                      const SizedBox(height: 20),
                       SizedBox(
                         width: double.infinity,
-                        height: 45,
+                        height: 50,
                         child: ElevatedButton(
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.grey[300],
-                            foregroundColor: Colors.black,
+                            backgroundColor: _selectedCategory != null
+                                ?Color(0xFF1D4ED8)
+                                : Colors.grey[300],
+                            foregroundColor: Colors.white,
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
+                                borderRadius: BorderRadius.circular(12)),
                           ),
-                          onPressed: () {},
-                          child: const Text(
-                            "Book Now",
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                            ),
-                          ),
+                          onPressed: _selectedCategory == null
+                              ? null
+                              : () {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                          content: Text(
+                                              "Booking category: $_selectedCategory"),
+                                          backgroundColor: Colors.green));
+                                },
+                          child: const Text("Book Now",
+                              style: TextStyle(
+                                  fontSize: 16, fontWeight: FontWeight.bold)),
                         ),
                       ),
 
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 30),
 
-                      Row(
-                        children: [
-                          CircleAvatar(
-                            radius: 20,
+                      Row(children: [
+                        CircleAvatar(
                             backgroundColor: Colors.green[100],
-                            child: const Icon(
-                              Icons.person,
-                              color: Colors.green,
-                              size: 20,
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Column(
+                            child: const Icon(Icons.person,
+                                color: Colors.green)),
+                        const SizedBox(width: 12),
+                        Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text(
-                                "Organized By",
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: Colors.grey,
-                                ),
-                              ),
-                              Text(
-                                organizerName,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-
+                              const Text("Organized By",
+                                  style: TextStyle(
+                                      fontSize: 12, color: Colors.grey)),
+                              Text(organizerName,
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.bold)),
+                            ])
+                      ]),
                       const SizedBox(height: 24),
-
-                      // --- REVIEWS ---
-                      const Text(
-                        "Rating & Review",
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                      const Text("Reviews",
+                          style: TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.bold)),
                       const SizedBox(height: 10),
                       SizedBox(
-                        height: 120,
+                        height: 130,
                         child: ListView(
                           scrollDirection: Axis.horizontal,
                           children: [
@@ -453,7 +384,7 @@ class _EventDetailPageState extends State<EventDetailPage> {
                           ],
                         ),
                       ),
-                      const SizedBox(height: 30),
+                      const SizedBox(height: 40),
                     ],
                   ),
                 ),
@@ -464,7 +395,6 @@ class _EventDetailPageState extends State<EventDetailPage> {
       ),
     );
   }
-
   Widget _buildInfoRow(IconData icon, String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
@@ -476,40 +406,14 @@ class _EventDetailPageState extends State<EventDetailPage> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  label,
-                  style: TextStyle(fontSize: 13, color: Colors.grey[600]),
-                ),
-                Text(
-                  value,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                Text(label,
+                    style: TextStyle(fontSize: 13, color: Colors.grey[600])),
+                Text(value,
+                    style: const TextStyle(
+                        fontSize: 13, fontWeight: FontWeight.bold)),
               ],
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTimeBox(String value, String label) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: Colors.grey[300]!),
-      ),
-      child: Column(
-        children: [
-          Text(
-            value,
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-          ),
-          Text(label, style: const TextStyle(fontSize: 10, color: Colors.grey)),
         ],
       ),
     );
@@ -526,42 +430,32 @@ class _EventDetailPageState extends State<EventDetailPage> {
         border: Border.all(color: Colors.grey[200]!),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
+              color: Colors.grey.withOpacity(0.1),
+              blurRadius: 4,
+              offset: const Offset(0, 2)),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            name,
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-          ),
-          const Text(
-            "Participant",
-            style: TextStyle(fontSize: 9, color: Colors.grey),
-          ),
+          Text(name,
+              style:
+                  const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+          const Text("Participant",
+              style: TextStyle(fontSize: 9, color: Colors.grey)),
           const SizedBox(height: 6),
-          Text(
-            "Lorem ipsum dolor sit amet...",
-            style: TextStyle(fontSize: 10, color: Colors.grey[600]),
-            maxLines: 3,
-            overflow: TextOverflow.ellipsis,
-          ),
+          Text("Lorem ipsum dolor sit amet...",
+              style: TextStyle(fontSize: 10, color: Colors.grey[600]),
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis),
           const Spacer(),
           Row(
             children: [
               const Icon(Icons.star, color: Colors.greenAccent, size: 14),
               const SizedBox(width: 4),
-              Text(
-                rating.toString(),
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
-                ),
-              ),
+              Text(rating.toString(),
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold, fontSize: 12)),
             ],
           ),
         ],
@@ -573,26 +467,269 @@ class _EventDetailPageState extends State<EventDetailPage> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text("Delete this Event?", style: TextStyle(fontSize: 16)),
+        title: const Text("Delete this Event?",
+            style: TextStyle(fontSize: 16)),
         content: const Text(
-          "Are you sure you want to delete this event? This action cannot be undone.",
-          style: TextStyle(fontSize: 13),
-        ),
+            "Are you sure you want to delete this event? This action cannot be undone.",
+            style: TextStyle(fontSize: 13)),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text("Cancel"),
-          ),
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text("Cancel")),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-            ),
+                backgroundColor: Colors.red, foregroundColor: Colors.white),
             onPressed: () {
               Navigator.pop(ctx);
               _deleteEvent(widget.eventId);
             },
             child: const Text("Delete"),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class ImageSliderWidget extends StatefulWidget {
+  final List<String> imageUrls;
+  final VoidCallback onBackPressed;
+
+  const ImageSliderWidget({
+    super.key,
+    required this.imageUrls,
+    required this.onBackPressed,
+  });
+
+  @override
+  State<ImageSliderWidget> createState() => _ImageSliderWidgetState();
+}
+
+class _ImageSliderWidgetState extends State<ImageSliderWidget> {
+  final PageController _pageController = PageController();
+  Timer? _autoSlideTimer;
+  int _currentImageIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _startAutoSlide();
+  }
+
+  void _startAutoSlide() {
+    if (widget.imageUrls.length > 1) {
+      _autoSlideTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
+        if (mounted && _pageController.hasClients) {
+          int nextIndex = (_currentImageIndex + 1) % widget.imageUrls.length;
+          _pageController.animateToPage(
+            nextIndex,
+            duration: const Duration(milliseconds: 400),
+            curve: Curves.easeInOut,
+          );
+        }
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _autoSlideTimer?.cancel();
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        SizedBox(
+          height: 300,
+          child: PageView.builder(
+            controller: _pageController,
+            physics: const BouncingScrollPhysics(),
+            itemCount: widget.imageUrls.length,
+            onPageChanged: (index) {
+              setState(() {
+                _currentImageIndex = index;
+              });
+            },
+            itemBuilder: (context, index) {
+              return Image.network(
+                widget.imageUrls[index],
+                fit: BoxFit.cover,
+                errorBuilder: (ctx, err, stack) => Container(
+                  color: Colors.grey[200],
+                  child: const Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.broken_image, size: 50, color: Colors.grey),
+                      Text("Gagal memuat",
+                          style: TextStyle(color: Colors.grey)),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+
+        // Tombol Back Melayang
+        Positioned(
+          top: 40,
+          left: 10,
+          child: CircleAvatar(
+            backgroundColor: Colors.white.withOpacity(0.7),
+            child: IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.black),
+              onPressed: widget.onBackPressed,
+            ),
+          ),
+        ),
+
+        // Indikator Dots
+        if (widget.imageUrls.length > 1)
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.bottomCenter,
+                  end: Alignment.topCenter,
+                  colors: [
+                    Colors.black.withOpacity(0.7),
+                    Colors.transparent
+                  ],
+                ),
+              ),
+              padding: const EdgeInsets.symmetric(vertical: 15),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: widget.imageUrls.asMap().entries.map((entry) {
+                  return GestureDetector(
+                    onTap: () {
+                      _pageController.animateToPage(
+                        entry.key,
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeInOut,
+                      );
+                    },
+                    child: Container(
+                      width: _currentImageIndex == entry.key ? 24.0 : 8.0,
+                      height: 8.0,
+                      margin: const EdgeInsets.symmetric(horizontal: 4.0),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(4),
+                        color: _currentImageIndex == entry.key
+                            ? Colors.white
+                            : Colors.white.withOpacity(0.5),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+// --- WIDGET KHUSUS TIMER ---
+class EventTimerWidget extends StatefulWidget {
+  final DateTime targetDate;
+  final String? deadlineString;
+
+  const EventTimerWidget({
+    super.key,
+    required this.targetDate,
+    required this.deadlineString,
+  });
+
+  @override
+  State<EventTimerWidget> createState() => _EventTimerWidgetState();
+}
+
+class _EventTimerWidgetState extends State<EventTimerWidget> {
+  Timer? _timer;
+  late Duration diff;
+
+  @override
+  void initState() {
+    super.initState();
+    _calculateDiff();
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (mounted) {
+        setState(() {
+          _calculateDiff();
+        });
+      }
+    });
+  }
+
+  void _calculateDiff() {
+    diff = widget.targetDate.difference(DateTime.now());
+    if (diff.isNegative) diff = Duration.zero;
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  Widget _buildTimeBox(String value, String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: Colors.grey[300]!),
+      ),
+      child: Column(
+        children: [
+          Text(value,
+              style:
+                  const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          Text(label,
+              style: const TextStyle(fontSize: 10, color: Colors.grey)),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    String days = diff.inDays.toString();
+    String hours = (diff.inHours % 24).toString();
+    String minutes = (diff.inMinutes % 60).toString();
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.9), borderRadius: BorderRadius.circular(12)),
+      child: Column(
+        children: [
+          Text("Registration Closes In",
+              style: TextStyle(
+                  fontWeight: FontWeight.bold, color: Colors.black)),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _buildTimeBox(days, "Days"),
+              const SizedBox(width: 8),
+              _buildTimeBox(hours, "Hours"),
+              const SizedBox(width: 8),
+              _buildTimeBox(minutes, "Mins"),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+              "Deadline: ${widget.deadlineString != null ? DateFormat('dd MMM, HH:mm').format(DateTime.parse(widget.deadlineString!)) : '-'}",
+              style: TextStyle(fontSize: 12, color: Colors.black),
           ),
         ],
       ),
