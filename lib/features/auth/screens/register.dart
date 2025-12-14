@@ -25,6 +25,10 @@ class _RegisterPageState extends State<RegisterPage> {
   String _role = 'runner'; // Default value
   String? _selectedLocation;
 
+  // -- Tambahan: Variabel untuk menyimpan error dari server --
+  String? _usernameServerMsg;
+  String? _emailServerMsg;
+
   // Location Options
   final List<String> _locations = [
     'Jakarta Barat',
@@ -60,12 +64,12 @@ class _RegisterPageState extends State<RegisterPage> {
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 40.0),
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 450), // Batas lebar agar rapi di tablet/web
+            constraints: const BoxConstraints(maxWidth: 450), 
             child: Container(
               padding: const EdgeInsets.all(32.0),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(24.0), // Rounded besar
+                borderRadius: BorderRadius.circular(24.0), 
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withOpacity(0.05),
@@ -107,7 +111,25 @@ class _RegisterPageState extends State<RegisterPage> {
                     TextFormField(
                       controller: _usernameController,
                       decoration: _inputDecoration('Enter your username', inputBorder, primaryBlue),
-                      validator: (value) => value!.isEmpty ? 'Please enter your username' : null,
+                      // -- Logika 1: Reset error server saat user mengetik --
+                      onChanged: (value) {
+                        if (_usernameServerMsg != null) {
+                          setState(() {
+                            _usernameServerMsg = null;
+                          });
+                          _formKey.currentState!.validate();
+                        }
+                      },
+                      // -- Logika 2: Validator mengecek error lokal & server --
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter your username';
+                        }
+                        if (_usernameServerMsg != null) {
+                          return _usernameServerMsg; // Tampilkan error "Username already exists"
+                        }
+                        return null;
+                      },
                     ),
                     const SizedBox(height: 16.0),
 
@@ -135,14 +157,29 @@ class _RegisterPageState extends State<RegisterPage> {
                     ),
                     const SizedBox(height: 16.0),
 
-                    // Email (Required for Runner)
+                    // Email
                     _buildLabel('Email', textLabel),
                     TextFormField(
                       controller: _emailController,
                       decoration: _inputDecoration('Enter your email', inputBorder, primaryBlue),
                       keyboardType: TextInputType.emailAddress,
+                      onChanged: (value) {
+                        if (_emailServerMsg != null) {
+                          setState(() {
+                            _emailServerMsg = null;
+                          });
+                          _formKey.currentState!.validate();
+                        }
+                      },
                       validator: (value) {
-                        if (_role == 'runner' && value!.isEmpty) return 'Please enter your email';
+                        // Kasus 3: Email kosong
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter your email';
+                        }
+                        // Kasus 2: Email sudah ada (dari server)
+                        if (_emailServerMsg != null) {
+                          return _emailServerMsg;
+                        }
                         return null;
                       },
                     ),
@@ -152,7 +189,6 @@ class _RegisterPageState extends State<RegisterPage> {
                     _buildLabel('Select Role', textLabel),
                     Row(
                       children: [
-                        // Runner Option
                         GestureDetector(
                           onTap: () => setState(() => _role = 'runner'),
                           child: Row(
@@ -168,7 +204,6 @@ class _RegisterPageState extends State<RegisterPage> {
                           ),
                         ),
                         const SizedBox(width: 16.0),
-                        // Organizer Option
                         GestureDetector(
                           onTap: () => setState(() => _role = 'event_organizer'),
                           child: Row(
@@ -188,8 +223,6 @@ class _RegisterPageState extends State<RegisterPage> {
                     const SizedBox(height: 16.0),
 
                     // --- LOCATION DROPDOWN ---
-                    // Menggunakan dropdown untuk kedua role demi konsistensi data, 
-                    // tapi dilabeli "Base Location" atau "Location" sesuai konteks.
                     _buildLabel(_role == 'event_organizer' ? 'Base Location' : 'Location', textLabel),
                     DropdownButtonFormField<String>(
                       value: _selectedLocation,
@@ -223,8 +256,13 @@ class _RegisterPageState extends State<RegisterPage> {
                     // --- BUTTON ---
                     ElevatedButton(
                       onPressed: () async {
+                        // Reset error server setiap kali tombol ditekan
+                        setState(() {
+                          _usernameServerMsg = null;
+                          _emailServerMsg = null;
+                        });
+
                         if (_formKey.currentState!.validate()) {
-                          // Logic Kirim Data
                           final Map<String, dynamic> data = {
                             "username": _usernameController.text,
                             "password": _passwordController.text,
@@ -253,10 +291,30 @@ class _RegisterPageState extends State<RegisterPage> {
                                 Navigator.pushReplacement(context,
                                     MaterialPageRoute(builder: (context) => const LoginPage()));
                               } else {
-                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                                  content: Text(response['message'] ?? 'Failed to register'),
-                                  backgroundColor: Colors.red,
-                                ));
+                                // --- MENANGANI ERROR DARI SERVER ---
+                                String message = response['message'] ?? 'Failed to register';
+                                
+                                setState(() {
+                                  // Logika deteksi pesan error dari Django/Backend
+                                  // Jika pesan mengandung kata "username"
+                                  if (message.toLowerCase().contains("username")) {
+                                    _usernameServerMsg = message; 
+                                  } 
+                                  // Jika pesan mengandung kata "email"
+                                  else if (message.toLowerCase().contains("email")) {
+                                    _emailServerMsg = message;
+                                  } 
+                                  // Error lain yang tidak spesifik field
+                                  else {
+                                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                                      content: Text(message),
+                                      backgroundColor: Colors.red,
+                                    ));
+                                  }
+                                });
+                                
+                                // Panggil ulang validate() untuk memunculkan teks merah di bawah input
+                                _formKey.currentState!.validate();
                               }
                             }
                           } catch (e) {
@@ -275,7 +333,7 @@ class _RegisterPageState extends State<RegisterPage> {
                         padding: const EdgeInsets.symmetric(vertical: 14.0),
                         elevation: 0,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10.0), // Rounded tombol
+                          borderRadius: BorderRadius.circular(10.0),
                         ),
                         textStyle: const TextStyle(
                           fontSize: 16.0,
@@ -328,7 +386,6 @@ class _RegisterPageState extends State<RegisterPage> {
 
   // --- HELPER WIDGETS ---
 
-  // Helper untuk Label di atas input
   Widget _buildLabel(String text, Color color) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 6.0),
@@ -343,7 +400,6 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 
-  // Helper untuk Style Input
   InputDecoration _inputDecoration(String hint, Color borderColor, Color focusColor) {
     return InputDecoration(
       hintText: hint,

@@ -1,8 +1,10 @@
+//lib\core\widgets\left_drawer.dart
 import 'package:flutter/material.dart';
 import 'package:spot_runner_mobile/core/screens/menu.dart';
 import 'package:spot_runner_mobile/features/auth/screens/login.dart';
 import 'package:pbp_django_auth/pbp_django_auth.dart';
 import 'package:provider/provider.dart';
+import 'package:spot_runner_mobile/features/event/screens/testpage.dart';
 
 class LeftDrawer extends StatelessWidget {
   const LeftDrawer({super.key});
@@ -19,7 +21,7 @@ class LeftDrawer extends StatelessWidget {
             child: ListView(
               children: [
                 const DrawerHeader(
-                  decoration: BoxDecoration(color: Colors.blue),
+                  decoration: BoxDecoration(color: Color(0xFF1D4ED8)),
                   child: Column(
                     children: [
                       Text(
@@ -57,7 +59,7 @@ class LeftDrawer extends StatelessWidget {
                   title: const Text('Dashboard'),
                   onTap: () {
                     // TODO: Navigate ke Dashboard
-                    Navigator.pop(context);
+                    Navigator.push(context, MaterialPageRoute(builder: (context) => EventListPage() ));
                   },
                 ),
                 ListTile(

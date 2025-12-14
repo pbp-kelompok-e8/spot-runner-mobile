@@ -1,3 +1,4 @@
+//lib\core\models\review_entry.dart
 // To parse this JSON data, do
 //
 //     final reviewEntry = reviewEntryFromJson(jsonString);

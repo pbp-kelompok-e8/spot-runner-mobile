@@ -1,4 +1,4 @@
-// lib/features/review/widgets/review_modal.dart
+// lib/features/review/screens/review_modal.dart
 
 import 'package:flutter/material.dart';
 
@@ -8,7 +8,7 @@ class ReviewModal extends StatefulWidget {
   final String? reviewId; // null untuk create, ada value untuk edit
   final int? initialRating; // null untuk create
   final String? initialReview; // null untuk create
-  final Function(int rating, String reviewText) onSubmit;
+  final Future<void> Function(int rating, String reviewText) onSubmit;
 
   const ReviewModal({
     Key? key,
@@ -29,6 +29,7 @@ class _ReviewModalState extends State<ReviewModal> {
   final _ratingController = TextEditingController();
   final _reviewController = TextEditingController();
   String? _errorMessage;
+  bool _isSubmitting = false;
 
   @override
   void initState() {
@@ -49,9 +50,10 @@ class _ReviewModalState extends State<ReviewModal> {
     super.dispose();
   }
 
-  void _handleSubmit() {
+  Future<void> _handleSubmit() async {
     setState(() {
       _errorMessage = null;
+      _isSubmitting = true;
     });
 
     if (_formKey.currentState!.validate()) {
@@ -62,13 +64,31 @@ class _ReviewModalState extends State<ReviewModal> {
       if (rating < 1 || rating > 5) {
         setState(() {
           _errorMessage = 'Rating must be between 1 and 5';
+          _isSubmitting = false;
         });
         return;
       }
 
-      // Panggil callback
-      widget.onSubmit(rating, reviewText);
-      Navigator.of(context).pop();
+      try {
+        // Panggil callback
+        await widget.onSubmit(rating, reviewText);
+        
+        if (mounted) {
+          // Close dialog with true result to indicate success
+          Navigator.of(context).pop(true);
+        }
+      } catch (e) {
+        if (mounted) {
+          setState(() {
+            _errorMessage = 'Failed to submit review';
+            _isSubmitting = false;
+          });
+        }
+      }
+    } else {
+      setState(() {
+        _isSubmitting = false;
+      });
     }
   }
 
@@ -93,9 +113,9 @@ class _ReviewModalState extends State<ReviewModal> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      'Rate & Review',
-                      style: TextStyle(
+                    Text(
+                      widget.reviewId == null ? 'Rate & Review' : 'Edit Review',
+                      style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.w600,
                         color: Color(0xFF1F2937),
@@ -103,7 +123,7 @@ class _ReviewModalState extends State<ReviewModal> {
                     ),
                     IconButton(
                       icon: const Icon(Icons.close, color: Color(0xFF6B7280)),
-                      onPressed: () => Navigator.of(context).pop(),
+                      onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(false),
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
                     ),
@@ -152,6 +172,7 @@ class _ReviewModalState extends State<ReviewModal> {
                 TextFormField(
                   controller: _ratingController,
                   keyboardType: TextInputType.number,
+                  enabled: !_isSubmitting,
                   decoration: InputDecoration(
                     hintText: '1-5',
                     hintStyle: const TextStyle(color: Color(0xFF9CA3AF)),
@@ -198,8 +219,9 @@ class _ReviewModalState extends State<ReviewModal> {
                 TextFormField(
                   controller: _reviewController,
                   maxLines: 4,
+                  enabled: !_isSubmitting,
                   decoration: InputDecoration(
-                    hintText: 'Write your review',
+                    hintText: 'Write your review (optional)',
                     hintStyle: const TextStyle(color: Color(0xFF9CA3AF)),
                     contentPadding: const EdgeInsets.all(12),
                     border: OutlineInputBorder(
@@ -242,7 +264,7 @@ class _ReviewModalState extends State<ReviewModal> {
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     TextButton(
-                      onPressed: () => Navigator.of(context).pop(),
+                      onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(false),
                       style: TextButton.styleFrom(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 16,
@@ -263,7 +285,7 @@ class _ReviewModalState extends State<ReviewModal> {
                     ),
                     const SizedBox(width: 12),
                     ElevatedButton(
-                      onPressed: _handleSubmit,
+                      onPressed: _isSubmitting ? null : _handleSubmit,
                       style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 16,
@@ -275,14 +297,23 @@ class _ReviewModalState extends State<ReviewModal> {
                         ),
                         elevation: 0,
                       ),
-                      child: const Text(
-                        'Post',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w500,
-                          fontSize: 15,
-                        ),
-                      ),
+                      child: _isSubmitting
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              ),
+                            )
+                          : const Text(
+                              'Post',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w500,
+                                fontSize: 15,
+                              ),
+                            ),
                     ),
                   ],
                 ),

@@ -1,3 +1,4 @@
+//lib\features\review\screens\review_card.dart
 import 'package:flutter/material.dart';
 
 class ReviewCard extends StatefulWidget {
@@ -6,7 +7,7 @@ class ReviewCard extends StatefulWidget {
   final String eventName;
   final String reviewText;
   final double rating;
-  final bool isOwner; // Apakah user ini pemilik review
+  final bool isOwner;
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
 
@@ -90,7 +91,6 @@ class _ReviewCardState extends State<ReviewCard> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        // Edit Button
                         InkWell(
                           onTap: () {
                             _removeOverlay();
@@ -124,12 +124,7 @@ class _ReviewCardState extends State<ReviewCard> {
                             ),
                           ),
                         ),
-                        // Divider
-                        const Divider(
-                          height: 1,
-                          color: Color(0xFFF3F4F6),
-                        ),
-                        // Delete Button
+                        const Divider(height: 1, color: Color(0xFFF3F4F6)),
                         InkWell(
                           onTap: () {
                             _removeOverlay();
@@ -198,20 +193,23 @@ class _ReviewCardState extends State<ReviewCard> {
             ),
           ],
         ),
-        padding: const EdgeInsets.all(32),
+        padding: const EdgeInsets.all(20),
         child: Stack(
           children: [
             Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 // Runner Name
                 Text(
                   widget.runnerName,
                   style: const TextStyle(
-                    fontSize: 20,
+                    fontSize: 16,
                     fontWeight: FontWeight.bold,
                     color: Color(0xFF1F2937),
                   ),
-                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
 
@@ -219,44 +217,47 @@ class _ReviewCardState extends State<ReviewCard> {
                 Text(
                   widget.eventName,
                   style: const TextStyle(
-                    fontSize: 14,
+                    fontSize: 12,
                     color: Color(0xFF9CA3AF),
                   ),
-                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 12),
 
-                // Review Text
-                Text(
-                  widget.reviewText.isEmpty 
-                      ? 'No comment' 
-                      : widget.reviewText,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: widget.reviewText.isEmpty 
-                        ? const Color(0xFF9CA3AF)
-                        : const Color(0xFF4B5563),
-                    height: 1.6,
+                // Review Text - Expanded untuk mengisi ruang
+                Expanded(
+                  child: Text(
+                    widget.reviewText.isEmpty 
+                        ? 'No comment' 
+                        : widget.reviewText,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: widget.reviewText.isEmpty 
+                          ? const Color(0xFF9CA3AF)
+                          : const Color(0xFF4B5563),
+                      height: 1.4,
+                    ),
+                    maxLines: 4,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 12),
 
-                // Rating
+                // Rating di bagian bawah
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     const Icon(
                       Icons.star,
                       color: Color(0xFFA3E635),
-                      size: 32,
+                      size: 20,
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 6),
                     Text(
-                      widget.rating.toStringAsFixed(2),
+                      widget.rating.toStringAsFixed(1),
                       style: const TextStyle(
-                        fontSize: 32,
+                        fontSize: 16,
                         fontWeight: FontWeight.bold,
                         color: Color(0xFF1F2937),
                       ),
@@ -264,8 +265,8 @@ class _ReviewCardState extends State<ReviewCard> {
                     const Text(
                       '/5.0 rating',
                       style: TextStyle(
-                        fontSize: 14,
-                        color: Color(0xFF9CA3AF),
+                        fontSize: 13,
+                        color: Color(0xFF6B7280),
                       ),
                     ),
                   ],
@@ -281,13 +282,17 @@ class _ReviewCardState extends State<ReviewCard> {
                 child: IconButton(
                   icon: Icon(
                     Icons.more_vert,
+                    size: 20,
                     color: _showMenu 
                         ? const Color(0xFF4B5563) 
                         : const Color(0xFF9CA3AF),
                   ),
                   onPressed: _toggleMenu,
                   padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
+                  constraints: const BoxConstraints(
+                    minWidth: 32,
+                    minHeight: 32,
+                  ),
                 ),
               ),
           ],
@@ -296,53 +301,3 @@ class _ReviewCardState extends State<ReviewCard> {
     );
   }
 }
-
-// Contoh penggunaan:
-// 
-// ReviewCard(
-//   reviewId: 'review_123',
-//   runnerName: 'Leticia Kutch',
-//   eventName: 'Participant Summer Marathon',
-//   reviewText: 'Lorem ipsum dolor sit amet pretium consectetur adipiscing elit. Lorem consectetur adipiscing elit. Pretium consectetur adipiscing elit. Lorem consectetur adipiscing elit.',
-//   rating: 4.75,
-//   isOwner: true, // set true jika user adalah pemilik review
-//   onEdit: () {
-//     // Handle edit
-//     showDialog(
-//       context: context,
-//       builder: (context) => ReviewModal(
-//         eventName: 'Participant Summer Marathon',
-//         eventId: 'event_123',
-//         reviewId: 'review_123',
-//         initialRating: 5,
-//         initialReview: 'Great event!',
-//         onSubmit: (rating, reviewText) {
-//           // Update review
-//         },
-//       ),
-//     );
-//   },
-//   onDelete: () {
-//     // Show confirmation dialog
-//     showDialog(
-//       context: context,
-//       builder: (context) => AlertDialog(
-//         title: const Text('Delete Review'),
-//         content: const Text('Are you sure you want to delete this review?'),
-//         actions: [
-//           TextButton(
-//             onPressed: () => Navigator.pop(context),
-//             child: const Text('Cancel'),
-//           ),
-//           TextButton(
-//             onPressed: () {
-//               // Delete review
-//               Navigator.pop(context);
-//             },
-//             child: const Text('Delete', style: TextStyle(color: Colors.red)),
-//           ),
-//         ],
-//       ),
-//     );
-//   },
-// )
