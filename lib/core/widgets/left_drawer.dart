@@ -4,6 +4,7 @@ import 'package:spot_runner_mobile/features/auth/screens/login.dart';
 import 'package:spot_runner_mobile/features/auth/screens/profile.dart';
 import 'package:pbp_django_auth/pbp_django_auth.dart';
 import 'package:provider/provider.dart';
+import 'package:spot_runner_mobile/features/merchandise/screens/merchandise_page.dart';
 
 class LeftDrawer extends StatelessWidget {
   final String username;
@@ -77,8 +78,10 @@ class LeftDrawer extends StatelessWidget {
                   leading: const Icon(Icons.shopping_bag_rounded),
                   title: const Text('Merchandise'),
                   onTap: () {
-                    // TODO: Navigate ke Merchandise
-                    Navigator.pop(context);
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(builder: (context) => const MerchandisePage()),
+                    );                    
                   },
                 ),
               ],
