@@ -5,11 +5,12 @@ import 'package:spot_runner_mobile/core/widgets/left_drawer.dart';
 import 'package:spot_runner_mobile/core/widgets/card.dart';
 
 class MyHomePage extends StatelessWidget {
-  MyHomePage({super.key});
+  MyHomePage({super.key, required this.username});
 
   final String nama = "SpotRunner";
   final String npm = "1111";
   final String kelas = "E";
+  final String username;
 
   // Gabungan semua item dari kedua versi
   final List<ItemHomepage> items = [
@@ -33,7 +34,7 @@ class MyHomePage extends StatelessWidget {
         backgroundColor: Theme.of(context).colorScheme.primary,
       ),
       // Tambahkan drawer dari versi kedua
-      drawer: const LeftDrawer(),
+      drawer: LeftDrawer(username: username),
       body: SingleChildScrollView(
         // Tambahkan SingleChildScrollView di sini
         child: Padding(

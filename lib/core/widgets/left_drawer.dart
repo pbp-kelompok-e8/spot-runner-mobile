@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:spot_runner_mobile/core/screens/menu.dart';
 import 'package:spot_runner_mobile/features/auth/screens/login.dart';
+import 'package:spot_runner_mobile/features/auth/screens/profile.dart';
 import 'package:pbp_django_auth/pbp_django_auth.dart';
 import 'package:provider/provider.dart';
 import 'package:spot_runner_mobile/features/merchandise/screens/merchandise_page.dart';
 
 class LeftDrawer extends StatelessWidget {
-  const LeftDrawer({super.key});
+  final String username;
+  const LeftDrawer({super.key, required this.username});
 
   @override
   Widget build(BuildContext context) {
@@ -49,7 +51,7 @@ class LeftDrawer extends StatelessWidget {
                   onTap: () {
                     Navigator.pushReplacement(
                       context,
-                      MaterialPageRoute(builder: (context) => MyHomePage()),
+                      MaterialPageRoute(builder: (context) => MyHomePage(username: username)),
                     );
                   },
                 ),
@@ -66,7 +68,10 @@ class LeftDrawer extends StatelessWidget {
                   title: const Text('Profile'),
                   onTap: () {
                     // TODO: Navigate ke Profile
-                    Navigator.pop(context);
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(builder: (context) => RunnerProfilePage(username: username)),
+                    );
                   },
                 ),
                 ListTile(
