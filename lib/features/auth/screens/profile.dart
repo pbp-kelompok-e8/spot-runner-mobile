@@ -4,8 +4,11 @@ import 'package:pbp_django_auth/pbp_django_auth.dart';
 import 'package:provider/provider.dart';
 import 'package:spot_runner_mobile/core/models/user_entry.dart';
 import 'package:spot_runner_mobile/features/auth/screens/login.dart';
+import 'package:spot_runner_mobile/features/auth/screens/change_password.dart';
 import 'package:spot_runner_mobile/core/screens/menu.dart'; // For navigation to Home
 import 'package:intl/intl.dart';
+import 'dart:convert';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 class RunnerProfilePage extends StatefulWidget {
   const RunnerProfilePage({super.key, required this.username});
@@ -59,7 +62,7 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
     try {
       final response = await request.logout("http://localhost:8000/auth/logout/");
       if (context.mounted) {
-        if (response['status'] == 'success') {
+        if (response['status'] == true) {
             Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (context) => const LoginPage()),
@@ -75,30 +78,157 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
   }
 
   Future<void> _handleDeleteAccount() async {
-    // Show confirmation dialog logic here
+    final TextEditingController passwordController = TextEditingController();
+    final request = context.read<CookieRequest>();
+
+    // Variabel untuk state di dalam dialog
+    bool isLoading = false;
+    String? errorMessage;
+
+    // Tampilkan Dialog
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Account', style: TextStyle(color: Colors.red)),
-        content: const Text(
-          'Are you sure you want to delete your account? This action is permanent and cannot be undone. All your event history and coins will be lost.'
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
-            onPressed: () async {
-              // Call API to delete account
-              Navigator.pop(context);
-              // Implementation needed for delete API
-            },
-            child: const Text('Delete Permanently'),
-          ),
-        ],
-      ),
+      barrierDismissible: false, // User tidak bisa klik luar untuk tutup saat loading
+      builder: (context) {
+        // StatefulBuilder agar kita bisa update tampilan DI DALAM dialog (loading/error)
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text(
+                'Delete Account', 
+                style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Tindakan ini permanen. Masukkan password Anda untuk konfirmasi penghapusan akun:',
+                    style: TextStyle(fontSize: 13, color: Colors.black87),
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  // --- INPUT FIELD DENGAN STYLE BIRU ---
+                  TextField(
+                    controller: passwordController,
+                    obscureText: true,
+                    decoration: InputDecoration(
+                      labelText: 'Password',
+                      hintText: 'Enter your password',
+                      // Tampilkan pesan error merah di sini jika ada
+                      errorText: errorMessage, 
+                      
+                      // Border default (saat tidak diklik)
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8.0),
+                        borderSide: const BorderSide(color: Colors.grey),
+                      ),
+                      
+                      // Border saat diklik (FOKUS) - Warna Biru Spot Runner
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8.0),
+                        borderSide: const BorderSide(
+                          color: Color(0xFF1D4ED8), 
+                          width: 2.0
+                        ),
+                      ),
+                      
+                      prefixIcon: const Icon(Icons.lock_outline),
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                // Tombol Cancel (Disable saat loading)
+                TextButton(
+                  onPressed: isLoading ? null : () => Navigator.pop(context),
+                  child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+                ),
+                
+                // Tombol Delete
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red, 
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                  ),
+                  onPressed: isLoading ? null : () async {
+                    // 1. Validasi Input Kosong
+                    if (passwordController.text.isEmpty) {
+                        setState(() {
+                          errorMessage = "Password tidak boleh kosong.";
+                        });
+                        return;
+                    }
+
+                    // 2. Mulai Loading & Reset Error
+                    setState(() {
+                      isLoading = true;
+                      errorMessage = null; 
+                    });
+
+                    // 3. Setup URL
+                    String baseUrl = "http://10.0.2.2:8000"; 
+                    try {
+                       // ignore: undefined_identifier
+                        if (kIsWeb) baseUrl = "http://localhost:8000"; 
+                    } catch (_) {}
+                    final url = "$baseUrl/api/delete-account/";
+
+                    try {
+                      // 4. Kirim Request
+                      final response = await request.postJson(
+                        url,
+                        jsonEncode({'password': passwordController.text}),
+                      );
+
+                      if (context.mounted) {
+                        if (response['status'] == 'success') {
+                          // SUKSES: Tutup dialog, arahkan ke Login
+                          Navigator.pop(context); // Tutup dialog
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(builder: (context) => const LoginPage()),
+                          );
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text("Akun berhasil dihapus."), 
+                              backgroundColor: Colors.green
+                            ),
+                          );
+                        } else {
+                          // GAGAL (Password Salah): Tampilkan error di bawah field
+                          setState(() {
+                            isLoading = false;
+                            errorMessage = response['message'] ?? "Password salah.";
+                          });
+                        }
+                      }
+                    } catch (e) {
+                      // ERROR JARINGAN / 500
+                      if (context.mounted) {
+                        setState(() {
+                          isLoading = false;
+                          errorMessage = "Terjadi kesalahan koneksi atau server.";
+                        });
+                        // Opsional: Print error ke console untuk debug
+                        debugPrint("Error delete account: $e");
+                      }
+                    }
+                  },
+                  child: isLoading 
+                    ? const SizedBox(
+                        width: 20, 
+                        height: 20, 
+                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
+                      )
+                    : const Text('Delete Permanently'),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 
@@ -218,6 +348,10 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
                       GestureDetector(
                         onTap: () {
                           // Handle change password navigation
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => const ChangePasswordPage()),
+                          );
                         },
                         child: const Text(
                           "Change password",
@@ -300,7 +434,7 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
                       ),
                       ElevatedButton(
                         onPressed: () {
-                          Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => MyHomePage(username: username)));
+                          Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => MyHomePage()));
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.blue[600],
@@ -507,10 +641,52 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
                   if (status == 'attending') ...[
                     const SizedBox(width: 8),
                     PopupMenuButton<String>(
-                      onSelected: (value) {
+                      onSelected: (value) async {
+                        // Di dalam profile.dart, cari bagian PopupMenuButton 'cancel'
                         if (value == 'cancel') {
-                          // Handle cancel logic
-                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Cancel ${event['name']}")));
+                          // 1. Ambil ID Event
+                          final eventId = event['id']; 
+                          if (eventId == null) return;
+
+                          final request = context.read<CookieRequest>();
+                          
+                          // 2. Gunakan URL API Baru (Gunakan 10.0.2.2 untuk emulator)
+                          // Pattern: /api/cancel/<username>/<id>/
+                          final url = "http://localhost:8000/api/cancel/${widget.username}/$eventId/";
+
+                          try {
+                            // 3. Ubah menjadi POST Request (Karena @require_POST di backend)
+                            final response = await request.post(url, {}); // Body kosong {}
+
+                            if (mounted) {
+                              // Cek status dari JSON response backend
+                              if (response['status'] == 'success') {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text(response['message'])),
+                                  );
+                                  
+                                  // Refresh halaman
+                                  setState(() {
+                                    _isLoading = true;
+                                  });
+                                  _fetchProfileData(); 
+                              } else {
+                                  // Tampilkan pesan error/warning dari backend
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(response['message']),
+                                      backgroundColor: response['status'] == 'warning' ? Colors.orange : Colors.red,
+                                    ),
+                                  );
+                              }
+                            }
+                          } catch (e) {
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text("Terjadi kesalahan: $e")),
+                              );
+                            }
+                          }
                         }
                       },
                       itemBuilder: (BuildContext context) {
