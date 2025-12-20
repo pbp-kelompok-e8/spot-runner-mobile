@@ -1,14 +1,23 @@
+import 'dart:convert'; // Diperlukan untuk jsonEncode
 import 'package:flutter/material.dart';
-import 'package:spot_runner_mobile/core/screens/menu.dart';
-import 'package:spot_runner_mobile/features/auth/screens/login.dart';
-import 'package:spot_runner_mobile/features/auth/screens/profile.dart';
 import 'package:pbp_django_auth/pbp_django_auth.dart';
 import 'package:provider/provider.dart';
-// import 'package:spot_runner_mobile/features/event/screens/testpage.dart';
+import 'package:spot_runner_mobile/core/screens/menu.dart';
+import 'package:spot_runner_mobile/features/auth/screens/login.dart';
+import 'package:spot_runner_mobile/features/event/screens/dashboard_screen.dart';
+import 'package:spot_runner_mobile/features/event/screens/profile_screen.dart' hide UserProfile;
+
+// TODO: Sesuaikan import ini dengan lokasi file model Anda yang sebenarnya
+import 'package:spot_runner_mobile/core/models/event_entry.dart'; 
+import 'package:spot_runner_mobile/core/models/user_entry.dart';
+import 'package:spot_runner_mobile/core/config/api_config.dart';
+import 'package:spot_runner_mobile/features/auth/screens/profile.dart';
+import 'package:spot_runner_mobile/features/merchandise/screens/merchandise_page.dart';
 import 'package:spot_runner_mobile/core/providers/user_provider.dart';
 
 class LeftDrawer extends StatelessWidget {
-  const LeftDrawer({super.key});
+  final String username;
+  const LeftDrawer({super.key, required this.username});
 
   @override
   Widget build(BuildContext context) {
@@ -59,16 +68,97 @@ class LeftDrawer extends StatelessWidget {
                   onTap: () {
                     Navigator.pushReplacement(
                       context,
-                      MaterialPageRoute(builder: (context) => MyHomePage()),
+                      MaterialPageRoute(
+                        builder: (context) => MyHomePage(username: username),
+                      ),
                     );
                   },
                 ),
                 ListTile(
                   leading: const Icon(Icons.dashboard),
                   title: const Text('Dashboard'),
-                  onTap: () {
-                    // TODO: Navigate ke Dashboard
-                    // Navigator.push(context, MaterialPageRoute(builder: (context) => EventListPage() ));
+                  onTap: () async {
+                    // Tampilkan loading snackbar agar user tahu proses sedang berjalan
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text("Loading Dashboard data..."),
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                    }
+
+                    try {
+                      // 1. Fetch Data User Profile
+                      final userResponse = await request.get(
+                          'http://127.0.0.1:8000/api/profile/'
+                      );
+                      
+                      print('DEBUG - User Response: $userResponse');
+                      print('DEBUG - User Response Type: ${userResponse.runtimeType}');
+
+                      // Parse user profile - handle both single object and list
+                      UserProfile userProfile;
+                      if (userResponse is List && userResponse.isNotEmpty) {
+                        // Response adalah list, ambil elemen pertama
+                        userProfile = UserProfile.fromJson(
+                          Map<String, dynamic>.from(userResponse[0] as Map)
+                        );
+                      } else if (userResponse is Map) {
+                        // Response adalah single object
+                        userProfile = UserProfile.fromJson(
+                          Map<String, dynamic>.from(userResponse)
+                        );
+                      } else {
+                        throw Exception("Invalid user profile response format: ${userResponse.runtimeType}");
+                      }
+
+                      // 2. Fetch Data Events
+                      final eventResponse = await request.get(
+                          'http://127.0.0.1:8000/api/events/'
+                      );
+                      
+                      print('DEBUG - Event Response: $eventResponse');
+                      print('DEBUG - Event Response Type: ${eventResponse.runtimeType}');
+
+                      // Parse events
+                      List<EventDetail> events = [];
+                      if (eventResponse is List) {
+                        events = eventResponse
+                            .map((item) => EventDetail.fromJson(
+                              Map<String, dynamic>.from(item as Map)
+                            ))
+                            .toList();
+                      } else {
+                        throw Exception("Invalid events response format: ${eventResponse.runtimeType}");
+                      }
+
+                      // 3. Navigasi ke DashboardScreen dengan membawa data
+                      if (context.mounted) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => DashboardScreen(
+                              userProfile: userProfile,
+                              events: events,
+                            ),
+                          ),
+                        );
+                      }
+                    } catch (e, stackTrace) {
+                      // Error handling jika fetch gagal
+                      print('ERROR: $e');
+                      print('STACK TRACE: $stackTrace');
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text("Gagal memuat data: ${e.toString()}"),
+                            backgroundColor: Colors.red,
+                            duration: const Duration(seconds: 3),
+                          ),
+                        );
+                      }
+                    }
                   },
                 ),
                 ListTile(
@@ -86,8 +176,12 @@ class LeftDrawer extends StatelessWidget {
                   leading: const Icon(Icons.shopping_bag_rounded),
                   title: const Text('Merchandise'),
                   onTap: () {
-                    // TODO: Navigate ke Merchandise
-                    Navigator.pop(context);
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const MerchandisePage(),
+                      ),
+                    );
                   },
                 ),
               ],
@@ -105,9 +199,7 @@ class LeftDrawer extends StatelessWidget {
               style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
             ),
             onTap: () async {
-              final response = await request.logout(
-                "http://localhost:8000/auth/logout/",
-              );
+              final response = await request.logout(ApiConfig.logout);
               String message = response["message"];
               if (context.mounted) {
                 if (response['status']) {
@@ -120,9 +212,9 @@ class LeftDrawer extends StatelessWidget {
                     MaterialPageRoute(builder: (context) => const LoginPage()),
                   );
                 } else {
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(SnackBar(content: Text(message)));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(message)),
+                  );
                 }
               }
             },

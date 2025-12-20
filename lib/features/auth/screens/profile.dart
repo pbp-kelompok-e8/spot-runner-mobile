@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart';
 import 'package:pbp_django_auth/pbp_django_auth.dart';
 import 'package:provider/provider.dart';
+import 'package:spot_runner_mobile/core/config/api_config.dart';
+import 'package:spot_runner_mobile/core/models/user_entry.dart';
 import 'package:spot_runner_mobile/features/auth/screens/login.dart';
 import 'package:spot_runner_mobile/features/auth/screens/change_password.dart';
 import 'package:spot_runner_mobile/core/screens/menu.dart';
@@ -52,8 +55,11 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
     });
   }
 
+  /* ===================== FETCH PROFILE ===================== */
+
   Future<void> _fetchProfileData() async {
     final request = context.read<CookieRequest>();
+
     try {
       String baseUrl = "http://10.0.2.2:8000";
       if (kIsWeb) {
@@ -64,23 +70,62 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
       
       if (mounted) {
         setState(() {
-          if (response['status'] == 'success') {
-            _profileData = response;
-          } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(response['message'] ?? "Failed to load profile")),
-            );
-          }
+          _profileData = response;
           _isLoading = false;
         });
-      }
-    } catch (e) {
-      if (mounted) {
+      } else {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error: $e")),
+          SnackBar(content: Text(response['message'] ?? 'Failed to load profile')),
         );
       }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    }
+  }
+
+  /* ===================== LOGOUT ===================== */
+
+  Future<void> _handleLogout(
+    BuildContext context,
+    CookieRequest request,
+  ) async {
+    try {
+      final response = await request.logout(
+        "http://127.0.0.1:8000/auth/logout/",
+      );
+
+      if (!context.mounted) return;
+
+      final bool success = response['status'] == true ||
+    response['message']?.toString().toLowerCase().contains('logout') == true;
+      final String message = response['message'] ?? 'Logout failed';
+      final String username = response['username'] ?? '';
+
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("$message Sampai jumpa, $username.")),
+        );
+
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const LoginPage()),
+          (_) => false,
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(message)),
+        );
+      }
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
     }
   }
 
@@ -102,7 +147,10 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
         }
       }
     } catch (e) {
-      // Error handling
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
     }
   }
 
@@ -393,6 +441,24 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
               ),
             ],
           ),
+          Text(
+            _profileData!['email'],
+            style: const TextStyle(color: Colors.white70),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetails(Color primaryBlue) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Column(
+        children: [
+          _infoRow("Weight", "${_profileData!['weight']} kg"),
+          _infoRow("Height", "${_profileData!['height']} cm"),
+          _infoRow("Gender", _profileData!['gender'] ?? "-"),
+          _infoRow("Location", _profileData!['base_location'] ?? "-"),
         ],
       ),
     );

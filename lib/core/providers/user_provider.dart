@@ -1,17 +1,19 @@
 import 'package:flutter/material.dart';
-
+import 'package:spot_runner_mobile/core/models/user_entry.dart'; 
 class UserProvider extends ChangeNotifier {
-  String _username = "";
+  UserProfile? _currentUser;
 
-  String get username => _username;
+  UserProfile? get currentUser => _currentUser;
 
-  void setUsername(String value) {
-    _username = value;
-    notifyListeners(); // Memberitahu semua widget yang pakai data ini untuk update
+  bool get hasUser => _currentUser != null;
+
+  void setUser(UserProfile user) {
+    _currentUser = user;
+    notifyListeners();
   }
-  
+
   void clearUser() {
-    _username = "";
+    _currentUser = null;
     notifyListeners();
   }
 }
