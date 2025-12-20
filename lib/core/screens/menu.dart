@@ -33,7 +33,7 @@ class MyHomePage extends StatelessWidget {
         backgroundColor: Theme.of(context).colorScheme.primary,
       ),
       // Tambahkan drawer dari versi kedua
-      drawer: const LeftDrawer(),
+      drawer: LeftDrawer(),
       body: SingleChildScrollView(
         // Tambahkan SingleChildScrollView di sini
         child: Padding(

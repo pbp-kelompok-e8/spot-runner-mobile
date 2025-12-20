@@ -198,7 +198,7 @@ class _LoginPageState extends State<LoginPage> {
                                 } 
                                 // Jika error spesifik (misal "Akun dinonaktifkan")
                                 else if (message.toLowerCase().contains('akun') || message.toLowerCase().contains('account')) {
-                                   _usernameError = message;
+                                    _usernameError = message;
                                 }
                                 // Fallback error
                                 else {
