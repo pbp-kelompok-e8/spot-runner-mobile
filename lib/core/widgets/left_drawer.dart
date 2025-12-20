@@ -1,8 +1,15 @@
+import 'dart:convert'; // Diperlukan untuk jsonEncode
 import 'package:flutter/material.dart';
 import 'package:spot_runner_mobile/core/screens/menu.dart';
 import 'package:spot_runner_mobile/features/auth/screens/login.dart';
+import 'package:spot_runner_mobile/features/auth/screens/profile.dart';
 import 'package:pbp_django_auth/pbp_django_auth.dart';
 import 'package:provider/provider.dart';
+// import 'package:spot_runner_mobile/features/event/screens/testpage.dart';
+import 'package:spot_runner_mobile/core/providers/user_provider.dart';
+import 'package:spot_runner_mobile/features/event/screens/dashboard_screen.dart';
+import 'package:spot_runner_mobile/features/event/screens/testpage.dart';
+import 'package:spot_runner_mobile/features/merchandise/screens/merchandise_page.dart';
 
 class LeftDrawer extends StatelessWidget {
   const LeftDrawer({super.key});
@@ -10,6 +17,14 @@ class LeftDrawer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final request = context.watch<CookieRequest>();
+
+    String username = "";
+    try {
+      username = context.watch<UserProvider>().username;
+    } catch (e) {
+      // Fallback jika provider error/belum ada
+      username = "Guest";
+    }
 
     return Drawer(
       child: Column(
@@ -19,17 +34,20 @@ class LeftDrawer extends StatelessWidget {
             child: ListView(
               children: [
                 const DrawerHeader(
-                  decoration: BoxDecoration(color: Colors.blue),
+                  decoration: BoxDecoration(color: Color(0xFF1D4ED8)),
                   child: Column(
                     children: [
+                      SizedBox(height: 16),
                       Text(
-                        'Spot Runner',
+                        "SpotRunner",
                         style: TextStyle(
-                          fontSize: 30,
-                          fontWeight: FontWeight.bold,
+                          fontFamily: 'Inter',
+                          fontStyle: FontStyle.italic,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 26,
+                          letterSpacing: -0.03,
                           color: Colors.white,
                         ),
-                        textAlign: TextAlign.center,
                       ),
                       Padding(padding: EdgeInsets.all(10)),
                       Text(
@@ -57,7 +75,10 @@ class LeftDrawer extends StatelessWidget {
                   title: const Text('Dashboard'),
                   onTap: () {
                     // TODO: Navigate ke Dashboard
-                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => EventListPage()),
+                    );
                   },
                 ),
                 ListTile(
@@ -65,7 +86,13 @@ class LeftDrawer extends StatelessWidget {
                   title: const Text('Profile'),
                   onTap: () {
                     // TODO: Navigate ke Profile
-                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            RunnerProfilePage(username: username),
+                      ),
+                    );
                   },
                 ),
                 ListTile(
@@ -73,7 +100,12 @@ class LeftDrawer extends StatelessWidget {
                   title: const Text('Merchandise'),
                   onTap: () {
                     // TODO: Navigate ke Merchandise
-                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => MerchandisePage(),
+                      ),
+                    );
                   },
                 ),
               ],

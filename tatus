@@ -1,0 +1,32 @@
+[33m6617a05[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mqowiy-review[m[33m, [m[1;31morigin/qowiy-review[m[33m, [m[1;32mwilliam-event[m[33m)[m Progress fitur event
+[33m97d4f3e[m save progress
+[33m3177206[m[33m ([m[1;31morigin/william-event[m[33m)[m Detail done
+[33mb703a80[m page event detail tinggal informasi EO
+[33m68923b1[m Event countdown fix
+[33m993c7e7[m Bikin UI Detail Page (belum fix)
+[33m6f711cf[m Merge branch 'peter-user' of https://github.com/pbp-kelompok-e8/spot-runner-mobile into william-event
+[33m11823cf[m apapa
+[33m0743b4b[m Fitur Create,Update,Delete Event  done (fungsionalitasnya), namun belum validasi user
+[33m5b25c5d[m Create + UI Edit selesai
+[33m1e45437[m merge with dev
+[33m1e46d48[m Merge branch 'dev' of https://github.com/pbp-kelompok-e8/spot-runner-mobile into peter-user
+[33ma8466b2[m Merge branch 'peter-user' of https://github.com/pbp-kelompok-e8/spot-runner-mobile into peter-user
+[33m1d0fb5e[m add error validation
+[33mdd79fd7[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m create directory structure
+[33m876297a[m Merge branch 'william-event' of https://github.com/pbp-kelompok-e8/spot-runner-mobile into dev
+[33maffad1c[m merging peter-user & main
+[33m87873d5[m event form)
+[33ma500aa1[m testing login register - working fine
+[33m1acb6a2[m add models
+[33m7dc3853[m tampilan dasar
+[33m7de2b7e[m add login and register page
+[33m071844b[m[33m ([m[1;33mtag: [m[1;33mv1.0.0+1-20251124140445[m[33m)[m Add Alur Pengintegrasian
+[33mb63d86a[m[33m ([m[1;33mtag: [m[1;33mv1.0.0+1-20251124121050[m[33m)[m add provider and pbp auth
+[33mb0b9f4e[m add download link in readme
+[33m0f1c292[m add release
+[33me803173[m[33m ([m[1;33mtag: [m[1;33mv1.0.0+1-20251124064851[m[33m)[m gak tau
+[33m5d96311[m add yamal
+[33m932a3b6[m dataset
+[33m4dd1c0d[m[33m ([m[1;31morigin/peter-user[m[33m, [m[1;31morigin/emir-eo[m[33m, [m[1;31morigin/dev[m[33m, [m[1;31morigin/chandra-merchandise[m[33m)[m Update README
+[33mcedd365[m Update README
+[33m5d2356d[m first commit
