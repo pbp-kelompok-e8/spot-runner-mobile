@@ -1,22 +1,20 @@
-// lib/features/review/services/review_service.dart
+// lib/features/review/service/review_service.dart
 
 import 'dart:convert';
 import 'package:pbp_django_auth/pbp_django_auth.dart';
 import 'package:spot_runner_mobile/core/models/review_entry.dart';
+import 'package:spot_runner_mobile/core/config/api_config.dart';
 
 class ReviewService {
-  static const String baseUrl = "http://localhost:8000/review";
-
   // Get all reviews atau filter by event_id
   static Future<ReviewEntry?> getAllReviews(
     CookieRequest request, {
     String? eventId,
   }) async {
     try {
-      String url = "$baseUrl/api/reviews/";
-      if (eventId != null) {
-        url += "?event_id=$eventId";
-      }
+      String url = eventId != null 
+          ? ApiConfig.reviewsByEvent(eventId)
+          : ApiConfig.reviewsJson;
 
       final response = await request.get(url);
       
@@ -37,7 +35,7 @@ class ReviewService {
   ) async {
     try {
       final response = await request.get(
-        "$baseUrl/api/reviews/event/$eventId/",
+        ApiConfig.eventReviews(eventId),
       );
       
       if (response['status'] == 'success') {
@@ -59,7 +57,7 @@ class ReviewService {
   }) async {
     try {
       final response = await request.postJson(
-        "$baseUrl/create-flutter/",
+        ApiConfig.createReview,
         jsonEncode({
           'event_id': eventId,
           'rating': rating,
@@ -89,7 +87,7 @@ class ReviewService {
   }) async {
     try {
       final response = await request.postJson(
-        "$baseUrl/$reviewId/edit/",
+        ApiConfig.editReview(reviewId),
         jsonEncode({
           'rating': rating,
           'review_text': reviewText,
@@ -116,7 +114,7 @@ class ReviewService {
   ) async {
     try {
       final response = await request.post(
-        "$baseUrl/$reviewId/delete/",
+        ApiConfig.deleteReview(reviewId),
         {},
       );
 
