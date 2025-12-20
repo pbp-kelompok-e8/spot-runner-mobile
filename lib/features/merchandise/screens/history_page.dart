@@ -145,7 +145,6 @@ class _HistoryPageState extends State<HistoryPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header: Product name or Event name + Coin badge
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -208,9 +207,8 @@ class _HistoryPageState extends State<HistoryPage> {
 
             const SizedBox(height: 8),
 
-            // Divider if organizer (to separate product and user info)
             if (userType == 'organizer' && redemption.user != null) ...[
-              Divider(color: Colors.grey[300]),
+              // Divider(color: Colors.grey[300]),
               const SizedBox(height: 8),
 
               // User info for organizer
@@ -223,7 +221,7 @@ class _HistoryPageState extends State<HistoryPage> {
                         'Name',
                         style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 4),
                       Text(
                         redemption.user!.username,
                         style: const TextStyle(
@@ -234,7 +232,7 @@ class _HistoryPageState extends State<HistoryPage> {
                     ],
                   ),
                   const SizedBox(height: 8),
-                  Divider(color: Colors.grey[300]),
+                  // Divider(color: Colors.grey[300]),
                   const SizedBox(height: 8),
                 ],
               ),

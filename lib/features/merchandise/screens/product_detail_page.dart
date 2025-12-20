@@ -93,6 +93,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              const SizedBox(height: 16),
               Text(
                 merchandise!.name,
                 style: const TextStyle(
@@ -107,7 +108,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
               ),
               const SizedBox(height: 8),
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                mainAxisAlignment: MainAxisAlignment.start,
                 children: [
                   Text('Quantity:', style: TextStyle(color: Colors.grey[600])),
                   Text(
@@ -116,7 +117,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 32),
               const Text(
                 'Total',
                 style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
@@ -125,7 +126,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
               Text(
                 '${merchandise!.priceCoins * quantity} Coins',
                 style: const TextStyle(
-                  fontSize: 24,
+                  fontSize: 20,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -135,30 +136,23 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
             Row(
               children: [
                 Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.pop(context),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    child: const Text('Cancel'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
                   child: ElevatedButton(
                     onPressed: () => _confirmRedeem(),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      backgroundColor: Color(0xFFBBF451),
+                      foregroundColor: Colors.black,
+                      padding: const EdgeInsets.symmetric(vertical: 20),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
-                    child: const Text('Confirm'),
+                    child: const Text(
+                      'Confirm',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.normal,
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -184,7 +178,6 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
 
       if (mounted) {
         if (response['success'] == true) {
-          // Set flag ada perubahan sebelum show success dialog
           hasChanges = true;
           await fetchData(); // Refresh data di detail page
           _showSuccessDialog();
@@ -236,7 +229,11 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                   ),
                 ],
               ),
-              const Icon(Icons.check_circle, color: Colors.green, size: 64),
+              const Icon(
+                Icons.check_circle,
+                color: Colors.lightGreen,
+                size: 64,
+              ),
               const SizedBox(height: 16),
               const Text(
                 "You've Successfully Redeemed your Coins!",
@@ -259,8 +256,8 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.lightGreen,
-                    foregroundColor: Colors.black,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 20),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
@@ -281,6 +278,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
       builder: (context) => AlertDialog(
         title: const Text('Delete Product'),
         content: const Text('Are you sure you want to delete this product?'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -380,7 +378,6 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
           ),
           backgroundColor: Theme.of(context).colorScheme.primary,
           iconTheme: const IconThemeData(color: Colors.white),
-          // Override leading untuk custom back behavior
           leading: IconButton(
             icon: const Icon(Icons.arrow_back),
             onPressed: () {
@@ -399,7 +396,6 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                 height: 400,
                 color: Colors.grey[200],
                 child: Image.network(
-                  // merchandise!.imageUrl,
                   ImageHelper.getProxiedImageUrl(merchandise!.imageUrl),
                   fit: BoxFit.cover,
                   errorBuilder: (context, error, stackTrace) => Container(
@@ -459,10 +455,18 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                     // Price
                     Row(
                       children: [
-                        Icon(
-                          Icons.monetization_on,
-                          size: 32,
-                          color: Colors.amber[700],
+                        Image.asset(
+                          'lib/assets/images/coin-icon2.png',
+                          width: 32,
+                          height: 32,
+                          fit: BoxFit.contain,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Icon(
+                              Icons.monetization_on,
+                              color: Colors.amber.shade400,
+                              size: 32,
+                            );
+                          },
                         ),
                         const SizedBox(width: 12),
                         Text(
@@ -582,9 +586,9 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                                 ? Theme.of(context).colorScheme.primary
                                 : Colors.grey,
                             foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            padding: const EdgeInsets.symmetric(vertical: 20),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(40),
                             ),
                             disabledBackgroundColor: Colors.grey[300],
                             disabledForegroundColor: Colors.grey[600],
@@ -597,6 +601,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                                 color: canRedeem
                                     ? Colors.white
                                     : Colors.grey[600],
+                                size: 20,
                               ),
                               const SizedBox(width: 8),
                               Text(
@@ -650,7 +655,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                                   ).colorScheme.primary,
                                   foregroundColor: Colors.white,
                                   padding: const EdgeInsets.symmetric(
-                                    vertical: 14,
+                                    vertical: 20,
                                   ),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(8),
@@ -668,7 +673,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                                   backgroundColor: Colors.red.shade50,
                                   foregroundColor: Colors.red,
                                   padding: const EdgeInsets.symmetric(
-                                    vertical: 14,
+                                    vertical: 20,
                                   ),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(8),
