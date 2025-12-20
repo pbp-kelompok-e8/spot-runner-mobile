@@ -163,7 +163,7 @@ class _AddProductPageState extends State<AddProductPage> {
           'Create New Merchandise',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
-        backgroundColor: Theme.of(context).colorScheme.primary,
+        backgroundColor: Color(0xFF1D4ED8),
         iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: SingleChildScrollView(

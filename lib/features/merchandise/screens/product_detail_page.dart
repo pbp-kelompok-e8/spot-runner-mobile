@@ -338,7 +338,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
       return Scaffold(
         appBar: AppBar(
           title: const Text('Product Detail'),
-          backgroundColor: Theme.of(context).colorScheme.primary,
+          backgroundColor: Color(0xFF1D4ED8),
           foregroundColor: Colors.white,
         ),
         body: const Center(child: CircularProgressIndicator()),
@@ -349,7 +349,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
       return Scaffold(
         appBar: AppBar(
           title: const Text('Product Detail'),
-          backgroundColor: Theme.of(context).colorScheme.primary,
+          backgroundColor: Color(0xFF1D4ED8),
           foregroundColor: Colors.white,
         ),
         body: const Center(child: Text('Product not found')),
@@ -376,7 +376,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
             'Product Detail',
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
           ),
-          backgroundColor: Theme.of(context).colorScheme.primary,
+          backgroundColor: Color(0xFF1D4ED8),
           iconTheme: const IconThemeData(color: Colors.white),
           leading: IconButton(
             icon: const Icon(Icons.arrow_back),

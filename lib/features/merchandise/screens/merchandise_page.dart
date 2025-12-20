@@ -129,7 +129,7 @@ class _MerchandisePageState extends State<MerchandisePage> {
           'Merchandise',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
-        backgroundColor: Theme.of(context).colorScheme.primary,
+        backgroundColor: Color(0xFF1D4ED8),
         iconTheme: const IconThemeData(color: Colors.white),
       ),
       drawer: LeftDrawer(),
@@ -400,9 +400,8 @@ class _MerchandisePageState extends State<MerchandisePage> {
             padding: const EdgeInsets.only(right: 8),
             child: Theme(
               data: Theme.of(context).copyWith(
-                splashColor: Colors.transparent, 
-                highlightColor:
-                    Colors.transparent, 
+                splashColor: Colors.transparent,
+                highlightColor: Colors.transparent,
               ),
               child: FilterChip(
                 selected: isSelected,
@@ -452,7 +451,7 @@ class _MerchandisePageState extends State<MerchandisePage> {
         icon: const Icon(Icons.add),
         label: const Text('Add New Product'),
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.blue,
+          backgroundColor: Color(0xFF1D4ED8),
           foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(vertical: 18),
           shape: RoundedRectangleBorder(

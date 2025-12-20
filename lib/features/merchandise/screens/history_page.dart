@@ -72,7 +72,7 @@ class _HistoryPageState extends State<HistoryPage> {
           'History',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
-        backgroundColor: Theme.of(context).colorScheme.primary,
+        backgroundColor: Color(0xFF1D4ED8),
         iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: isLoading

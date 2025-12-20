@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:pbp_django_auth/pbp_django_auth.dart';
 import 'package:provider/provider.dart';
-import 'package:intl/intl.dart'; 
+import 'package:intl/intl.dart';
 import 'package:spot_runner_mobile/core/widgets/left_drawer.dart';
 import 'package:spot_runner_mobile/core/models/event_entry.dart';
-import 'package:spot_runner_mobile/features/event/screens/detailevent_page.dart'; 
+import 'package:spot_runner_mobile/features/event/screens/detailevent_page.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:spot_runner_mobile/core/widgets/custom_app_bar.dart';
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key});
@@ -39,10 +40,14 @@ class _MyHomePageState extends State<MyHomePage> {
   // Helper title case
   String _toTitleCase(String text) {
     if (text.isEmpty) return text;
-    return text.replaceAll('_', ' ').split(' ').map((word) {
-      if (word.isEmpty) return word;
-      return "${word[0].toUpperCase()}${word.substring(1).toLowerCase()}";
-    }).join(' ');
+    return text
+        .replaceAll('_', ' ')
+        .split(' ')
+        .map((word) {
+          if (word.isEmpty) return word;
+          return "${word[0].toUpperCase()}${word.substring(1).toLowerCase()}";
+        })
+        .join(' ');
   }
 
   String getBaseUrl() {
@@ -79,39 +84,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        centerTitle: true,
-        leading: Builder(
-          builder: (context) => IconButton(
-            icon: Icon(Icons.menu, color: _textDark),
-            onPressed: () => Scaffold.of(context).openDrawer(),
-          ),
-        ),
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              "SpotRunner",
-              style: TextStyle(
-                fontFamily: 'Inter',
-                fontStyle: FontStyle.italic,
-                fontWeight: FontWeight.w700,
-                fontSize: 18,
-                letterSpacing: -0.03,
-                color: _primaryBlue,
-              ),
-            ),
-            const SizedBox(width: 4),
-            Container(
-              width: 6,
-              height: 6,
-              decoration: BoxDecoration(color: _primaryBlue, shape: BoxShape.circle),
-            )
-          ],
-        ),
-      ),
+      appBar: CustomAppBar(),
       drawer: const LeftDrawer(),
       body: SingleChildScrollView(
         // [TAMBAHAN 3] Pasang controller ke SingleChildScrollView
@@ -121,7 +94,12 @@ class _MyHomePageState extends State<MyHomePage> {
           children: [
             _buildHeroSection(),
             Padding(
-              padding: const EdgeInsets.only(top: 32, left: 20, right: 20, bottom: 40),
+              padding: const EdgeInsets.only(
+                top: 32,
+                left: 20,
+                right: 20,
+                bottom: 40,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -140,14 +118,20 @@ class _MyHomePageState extends State<MyHomePage> {
                     scrollDirection: Axis.horizontal,
                     child: Row(
                       children: _categories.map((category) {
-                        bool isSelected = _selectedCategory == category['value'];
+                        bool isSelected =
+                            _selectedCategory == category['value'];
                         return Padding(
                           padding: const EdgeInsets.only(right: 12.0),
                           child: InkWell(
-                            onTap: () => setState(() => _selectedCategory = category['value']!),
+                            onTap: () => setState(
+                              () => _selectedCategory = category['value']!,
+                            ),
                             borderRadius: BorderRadius.circular(100),
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 8,
+                              ),
                               decoration: BoxDecoration(
                                 color: isSelected ? _primaryBlue : Colors.white,
                                 borderRadius: BorderRadius.circular(100),
@@ -162,7 +146,9 @@ class _MyHomePageState extends State<MyHomePage> {
                                   fontFamily: 'Inter',
                                   fontWeight: FontWeight.w500,
                                   fontSize: 14,
-                                  color: isSelected ? Colors.white : _primaryBlue,
+                                  color: isSelected
+                                      ? Colors.white
+                                      : _primaryBlue,
                                 ),
                               ),
                             ),
@@ -174,46 +160,64 @@ class _MyHomePageState extends State<MyHomePage> {
                   const SizedBox(height: 32),
                   FutureBuilder(
                     future: fetchEvents(request),
-                    builder: (context, AsyncSnapshot<List<EventEntry>> snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Center(child: CircularProgressIndicator());
-                      } else if (snapshot.hasError) {
-                        return Center(
-                          child: Column(
-                            children: [
-                              const Icon(Icons.error_outline, color: Colors.red, size: 40),
-                              const SizedBox(height: 8),
-                              Text("Error: ${snapshot.error}", textAlign: TextAlign.center),
-                            ],
-                          ),
-                        );
-                      } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                        return _buildEmptyState();
-                      } else {
-                        var events = snapshot.data!;
-                        
-                        if (_selectedCategory != 'All') {
-                          events = events.where((e) {
-                            String filterKeyword = _selectedCategory.toLowerCase().replaceAll('_', ' ');
-                            return e.eventCategories.any((cat) => 
-                              cat.toLowerCase().replaceAll('_', ' ').contains(filterKeyword)
+                    builder:
+                        (context, AsyncSnapshot<List<EventEntry>> snapshot) {
+                          if (snapshot.connectionState ==
+                              ConnectionState.waiting) {
+                            return const Center(
+                              child: CircularProgressIndicator(),
                             );
-                          }).toList();
-                        }
+                          } else if (snapshot.hasError) {
+                            return Center(
+                              child: Column(
+                                children: [
+                                  const Icon(
+                                    Icons.error_outline,
+                                    color: Colors.red,
+                                    size: 40,
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    "Error: ${snapshot.error}",
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ],
+                              ),
+                            );
+                          } else if (!snapshot.hasData ||
+                              snapshot.data!.isEmpty) {
+                            return _buildEmptyState();
+                          } else {
+                            var events = snapshot.data!;
 
-                        if (events.isEmpty) return _buildEmptyState();
+                            if (_selectedCategory != 'All') {
+                              events = events.where((e) {
+                                String filterKeyword = _selectedCategory
+                                    .toLowerCase()
+                                    .replaceAll('_', ' ');
+                                return e.eventCategories.any(
+                                  (cat) => cat
+                                      .toLowerCase()
+                                      .replaceAll('_', ' ')
+                                      .contains(filterKeyword),
+                                );
+                              }).toList();
+                            }
 
-                        return ListView.separated(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: events.length,
-                          separatorBuilder: (ctx, index) => const SizedBox(height: 20),
-                          itemBuilder: (context, index) {
-                            return _buildEventCard(events[index]);
-                          },
-                        );
-                      }
-                    },
+                            if (events.isEmpty) return _buildEmptyState();
+
+                            return ListView.separated(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemCount: events.length,
+                              separatorBuilder: (ctx, index) =>
+                                  const SizedBox(height: 20),
+                              itemBuilder: (context, index) {
+                                return _buildEventCard(events[index]);
+                              },
+                            );
+                          }
+                        },
                   ),
                 ],
               ),
@@ -235,7 +239,8 @@ class _MyHomePageState extends State<MyHomePage> {
             'lib/assets/images/banner-hero.png',
             fit: BoxFit.cover,
             alignment: const Alignment(0.6, 0),
-            errorBuilder: (context, error, stackTrace) => Container(color: Colors.grey[300]),
+            errorBuilder: (context, error, stackTrace) =>
+                Container(color: Colors.grey[300]),
           ),
           Container(
             decoration: BoxDecoration(
@@ -288,14 +293,22 @@ class _MyHomePageState extends State<MyHomePage> {
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFA0E228),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50)),
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(50),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
                   ),
                   child: const Text(
                     "Explore Now",
-                    style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                )
+                ),
               ],
             ),
           ),
@@ -307,14 +320,16 @@ class _MyHomePageState extends State<MyHomePage> {
   Widget _buildEventCard(EventEntry event) {
     String imageUrl = event.image;
     if (!imageUrl.startsWith('http')) {
-        imageUrl = "${getBaseUrl()}/media/$imageUrl";
+      imageUrl = "${getBaseUrl()}/media/$imageUrl";
     }
 
     String dateStr = DateFormat('dd MMM yyyy (E)').format(event.eventDate);
-    String typesStr = event.eventCategories.map((e) => _toTitleCase(e)).join(", ");
+    String typesStr = event.eventCategories
+        .map((e) => _toTitleCase(e))
+        .join(", ");
     if (typesStr.isEmpty) typesStr = "Marathon";
 
-    bool isTopRun = event.totalParticipans > 50; 
+    bool isTopRun = event.totalParticipans > 50;
 
     return Container(
       decoration: BoxDecoration(
@@ -326,7 +341,7 @@ class _MyHomePageState extends State<MyHomePage> {
             color: Colors.black.withOpacity(0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
-          )
+          ),
         ],
       ),
       child: Column(
@@ -338,14 +353,21 @@ class _MyHomePageState extends State<MyHomePage> {
                 height: 183,
                 width: double.infinity,
                 child: ClipRRect(
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(20),
+                  ),
                   child: Image.network(
                     imageUrl,
                     fit: BoxFit.cover,
                     errorBuilder: (context, error, stackTrace) {
                       return Container(
                         color: Colors.grey[200],
-                        child: const Center(child: Icon(Icons.image_not_supported, color: Colors.grey)),
+                        child: const Center(
+                          child: Icon(
+                            Icons.image_not_supported,
+                            color: Colors.grey,
+                          ),
+                        ),
                       );
                     },
                   ),
@@ -356,7 +378,10 @@ class _MyHomePageState extends State<MyHomePage> {
                   top: 20,
                   right: 20,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: _badgeBg,
                       borderRadius: BorderRadius.circular(8),
@@ -403,8 +428,11 @@ class _MyHomePageState extends State<MyHomePage> {
                   ),
                 ),
                 const SizedBox(height: 20),
-                
-                _buildInfoRow(Icons.group_outlined, "${event.totalParticipans}/${event.capacity} Participants"),
+
+                _buildInfoRow(
+                  Icons.group_outlined,
+                  "${event.totalParticipans}/${event.capacity} Participants",
+                ),
                 const SizedBox(height: 8),
                 _buildInfoRow(Icons.calendar_today_outlined, dateStr),
                 const SizedBox(height: 8),
@@ -413,7 +441,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 _buildInfoRow(Icons.run_circle_outlined, typesStr),
 
                 const SizedBox(height: 24),
-                
+
                 SizedBox(
                   width: double.infinity,
                   child: OutlinedButton(
@@ -421,14 +449,17 @@ class _MyHomePageState extends State<MyHomePage> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => EventDetailPage(eventId: event.id),
+                          builder: (context) =>
+                              EventDetailPage(eventId: event.id),
                         ),
                       );
                     },
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       side: const BorderSide(color: Color(0xFFDFE4EA)),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(50),
+                      ),
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -443,11 +474,15 @@ class _MyHomePageState extends State<MyHomePage> {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        const Icon(Icons.arrow_forward, size: 18, color: Color(0xFF637381))
+                        const Icon(
+                          Icons.arrow_forward,
+                          size: 18,
+                          color: Color(0xFF637381),
+                        ),
                       ],
                     ),
                   ),
-                )
+                ),
               ],
             ),
           ),
@@ -481,9 +516,10 @@ class _MyHomePageState extends State<MyHomePage> {
       child: Column(
         children: [
           Image.asset(
-            'lib/assets/images/no-event-found.png', 
+            'lib/assets/images/no-event-found.png',
             height: 100,
-            errorBuilder: (ctx, err, stack) => const Icon(Icons.search_off, size: 60, color: Colors.grey),
+            errorBuilder: (ctx, err, stack) =>
+                const Icon(Icons.search_off, size: 60, color: Colors.grey),
           ),
           const SizedBox(height: 16),
           const Text("No events found", style: TextStyle(color: Colors.grey)),
