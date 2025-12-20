@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:pbp_django_auth/pbp_django_auth.dart';
 import 'package:provider/provider.dart';
+import 'package:spot_runner_mobile/core/config/api_config.dart';
 
 class AddProductPage extends StatefulWidget {
   const AddProductPage({super.key});
@@ -17,7 +18,7 @@ class _AddProductPageState extends State<AddProductPage> {
   final _stockController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _imageUrlController = TextEditingController();
-  
+
   String _selectedCategory = 'apparel';
   bool _isLoading = false;
 
@@ -40,7 +41,7 @@ class _AddProductPageState extends State<AddProductPage> {
 
     try {
       final response = await request.postJson(
-        'http://localhost:8000/merchandise/create-flutter/',
+        ApiConfig.createMerchandise,
         jsonEncode({
           'name': _nameController.text.trim(),
           'price_coins': int.parse(_priceController.text),
@@ -94,19 +95,12 @@ class _AddProductPageState extends State<AddProductPage> {
                   ),
                 ],
               ),
-              const Icon(
-                Icons.check_circle,
-                color: Colors.green,
-                size: 64,
-              ),
+              const Icon(Icons.check_circle, color: Colors.green, size: 64),
               const SizedBox(height: 16),
               const Text(
                 "You've Successfully Add New Merchandise!",
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 24),
               SizedBox(
@@ -167,10 +161,7 @@ class _AddProductPageState extends State<AddProductPage> {
       appBar: AppBar(
         title: const Text(
           'Create New Merchandise',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         backgroundColor: Theme.of(context).colorScheme.primary,
         iconTheme: const IconThemeData(color: Colors.white),
@@ -186,18 +177,12 @@ class _AddProductPageState extends State<AddProductPage> {
                 // Header
                 const Text(
                   'Create New Merchandise',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   'Launch new merchandise for your event',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[600],
-                  ),
+                  style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                 ),
                 const SizedBox(height: 24),
 
@@ -319,7 +304,9 @@ class _AddProductPageState extends State<AddProductPage> {
                   children: [
                     Expanded(
                       child: OutlinedButton(
-                        onPressed: _isLoading ? null : () => Navigator.pop(context),
+                        onPressed: _isLoading
+                            ? null
+                            : () => Navigator.pop(context),
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
@@ -334,7 +321,9 @@ class _AddProductPageState extends State<AddProductPage> {
                       child: ElevatedButton(
                         onPressed: _isLoading ? null : _submitForm,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Theme.of(context).colorScheme.primary,
+                          backgroundColor: Theme.of(
+                            context,
+                          ).colorScheme.primary,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
@@ -347,7 +336,9 @@ class _AddProductPageState extends State<AddProductPage> {
                                 width: 20,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    Colors.white,
+                                  ),
                                 ),
                               )
                             : const Text('Add Product'),
@@ -368,10 +359,7 @@ class _AddProductPageState extends State<AddProductPage> {
       padding: const EdgeInsets.only(bottom: 8),
       child: Text(
         text,
-        style: const TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w500,
-        ),
+        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
       ),
     );
   }

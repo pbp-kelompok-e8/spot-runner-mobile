@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:pbp_django_auth/pbp_django_auth.dart';
 import 'package:provider/provider.dart';
+import 'package:spot_runner_mobile/core/config/api_config.dart';
 import 'package:spot_runner_mobile/features/merchandise/models/merchandise_model.dart';
 import 'package:spot_runner_mobile/features/merchandise/screens/edit_product_page.dart';
 import 'package:spot_runner_mobile/features/merchandise/utils/image_helper.dart';
@@ -38,13 +39,11 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     try {
       // Fetch merchandise detail
       final merchResponse = await request.get(
-        'http://localhost:8000/merchandise/json/${widget.merchandiseId}/',
+        ApiConfig.merchandiseDetail(widget.merchandiseId),
       );
 
       // Fetch user coins
-      final userResponse = await request.get(
-        'http://localhost:8000/merchandise/user-coins/',
-      );
+      final userResponse = await request.get(ApiConfig.userCoins);
 
       if (mounted) {
         setState(() {
@@ -176,9 +175,10 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     final request = context.read<CookieRequest>();
     Navigator.pop(context); // Close dialog
 
+    // 'http://localhost:8000/merchandise/${widget.merchandiseId}/redeem/'
     try {
       final response = await request.postJson(
-        'http://localhost:8000/merchandise/${widget.merchandiseId}/redeem/',
+        ApiConfig.redeemMerchandiseUrl(widget.merchandiseId),
         jsonEncode({'quantity': quantity}),
       );
 
@@ -301,8 +301,8 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
 
     try {
       final response = await request.post(
-        'http://localhost:8000/merchandise/delete-flutter/${widget.merchandiseId}/',
-        {}, // Empty map for POST body
+        ApiConfig.deleteMerchandiseUrl(widget.merchandiseId),
+        {},
       );
 
       if (mounted) {
