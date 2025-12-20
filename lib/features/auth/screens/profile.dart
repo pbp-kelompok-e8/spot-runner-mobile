@@ -11,78 +11,144 @@ class RunnerProfilePage extends StatefulWidget {
 }
 
 class _RunnerProfilePageState extends State<RunnerProfilePage> {
-  // Variabel untuk menyimpan data profil
   Map<String, dynamic>? _profileData;
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    // Ambil data saat halaman pertama kali dibuka
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _fetchProfileData();
     });
   }
 
+  /* ===================== FETCH PROFILE ===================== */
+
   Future<void> _fetchProfileData() async {
     final request = context.read<CookieRequest>();
+
     try {
-      final response = await request.get('http://localhost:8000/api/runner-profile/');
-      
-      if (mounted) {
+      final response = await request.get(
+        'http://127.0.0.1:8000/api/runner-profile/',
+      );
+
+      if (!mounted) return;
+
+      if (response['status'] == 'success') {
         setState(() {
-          if (response['status'] == 'success') {
-            _profileData = response;
-          } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(response['message'] ?? "Failed to load profile")),
-            );
-          }
+          _profileData = response;
           _isLoading = false;
         });
-      }
-    } catch (e) {
-      if (mounted) {
+      } else {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error: $e")),
+          SnackBar(content: Text(response['message'] ?? 'Failed to load profile')),
         );
       }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
     }
   }
 
-  Future<void> _handleLogout() async {
-    final request = context.read<CookieRequest>();
+  /* ===================== LOGOUT ===================== */
+
+  Future<void> _handleLogout(
+    BuildContext context,
+    CookieRequest request,
+  ) async {
     try {
-      final response = await request.logout("http://localhost:8000/auth/logout/");
-      if (context.mounted) {
-        if (response['status'] == 'success') {
-            Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const LoginPage()),
-          );
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Logged out successfully!")),
-          );
-        }
+      final response = await request.logout(
+        "http://127.0.0.1:8000/auth/logout/",
+      );
+
+      if (!context.mounted) return;
+
+      final bool success = response['status'] == true ||
+    response['message']?.toString().toLowerCase().contains('logout') == true;
+      final String message = response['message'] ?? 'Logout failed';
+      final String username = response['username'] ?? '';
+
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("$message Sampai jumpa, $username.")),
+        );
+
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const LoginPage()),
+          (_) => false,
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(message)),
+        );
       }
     } catch (e) {
-      // Error handling
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
     }
   }
+
+  /* ===================== DELETE ACCOUNT ===================== */
+
+  Future<void> _handleDeleteAccount(
+    BuildContext context,
+    CookieRequest request,
+  ) async {
+    try {
+      final response = await request.post(
+        "http://127.0.0.1:8000/event-organizer/delete-account-flutter/",
+        {},
+      );
+
+      if (!context.mounted) return;
+
+      if (response['success'] == true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(response['message'])),
+        );
+
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const LoginPage()),
+          (_) => false,
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(response['message'] ?? 'Delete failed')),
+        );
+      }
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    }
+  }
+
+  /* ===================== UI ===================== */
 
   @override
   Widget build(BuildContext context) {
-    // Warna sesuai tema
-    final Color primaryBlue = const Color(0xFF1D4ED8);
-    final Color bgPage = const Color(0xFFF3F4F6);
+    final request = context.watch<CookieRequest>();
+
+    const Color primaryBlue = Color(0xFF1D4ED8);
+    const Color bgPage = Color(0xFFF3F4F6);
 
     return Scaffold(
       backgroundColor: bgPage,
       appBar: AppBar(
-        title: const Text("My Profile", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        title: const Text(
+          "My Profile",
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
         backgroundColor: primaryBlue,
-        elevation: 0,
         centerTitle: true,
         actions: [
           IconButton(
@@ -92,215 +158,113 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
         ],
       ),
       body: _isLoading
-          ? Center(child: CircularProgressIndicator(color: primaryBlue))
+          ? const Center(child: CircularProgressIndicator())
           : _profileData == null
-              ? const Center(child: Text("Failed to load profile data"))
+              ? const Center(child: Text("Failed to load profile"))
               : SingleChildScrollView(
                   child: Column(
                     children: [
-                      // --- HEADER SECTION (Foto & Nama) ---
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.only(bottom: 30.0),
-                        decoration: BoxDecoration(
-                          color: primaryBlue,
-                          borderRadius: const BorderRadius.only(
-                            bottomLeft: Radius.circular(30),
-                            bottomRight: Radius.circular(30),
-                          ),
-                        ),
-                        child: Column(
-                          children: [
-                            const SizedBox(height: 10),
-                            CircleAvatar(
-                              radius: 50,
-                              backgroundColor: Colors.white,
-                              child: Text(
-                                _profileData!['username'][0].toUpperCase(),
-                                style: TextStyle(
-                                  fontSize: 40,
-                                  fontWeight: FontWeight.bold,
-                                  color: primaryBlue,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 15),
-                            Text(
-                              _profileData!['username'],
-                              style: const TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                            Text(
-                              _profileData!['email'],
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.blue[100],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
+                      _buildHeader(primaryBlue),
                       const SizedBox(height: 20),
+                      _buildDetails(primaryBlue),
+                      const SizedBox(height: 30),
 
-                      // --- DETAILS SECTION (Card Grid) ---
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              "Personal Details",
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black87,
-                              ),
-                            ),
-                            const SizedBox(height: 15),
-                            
-                            // Grid Data
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: _buildInfoCard(
-                                    icon: Icons.monitor_weight_outlined,
-                                    label: "Weight",
-                                    value: "${_profileData!['weight']} kg",
-                                    color: Colors.orange,
-                                  ),
-                                ),
-                                const SizedBox(width: 15),
-                                Expanded(
-                                  child: _buildInfoCard(
-                                    icon: Icons.height,
-                                    label: "Height",
-                                    value: "${_profileData!['height']} cm",
-                                    color: Colors.green,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 15),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: _buildInfoCard(
-                                    icon: Icons.person_outline,
-                                    label: "Gender",
-                                    value: _profileData!['gender'] ?? "-",
-                                    color: Colors.purple,
-                                  ),
-                                ),
-                                const SizedBox(width: 15),
-                                Expanded(
-                                  child: _buildInfoCard(
-                                    icon: Icons.location_on_outlined,
-                                    label: "Location",
-                                    value: _profileData!['base_location'] ?? "-",
-                                    color: Colors.red,
-                                  ),
-                                ),
-                              ],
-                            ),
-
-                            const SizedBox(height: 30),
-
-                            // --- ACTION BUTTONS ---
-                            ElevatedButton.icon(
-                              onPressed: () {
-                                // TODO: Navigasi ke Edit Profile Page
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text("Edit Feature coming soon!")),
-                                );
-                              },
-                              icon: const Icon(Icons.edit),
-                              label: const Text("Edit Profile"),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: primaryBlue,
-                                foregroundColor: Colors.white,
-                                minimumSize: const Size(double.infinity, 50),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 15),
-                            OutlinedButton.icon(
-                              onPressed: _handleLogout,
-                              icon: const Icon(Icons.logout),
-                              label: const Text("Logout"),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: Colors.red,
-                                side: const BorderSide(color: Colors.red),
-                                minimumSize: const Size(double.infinity, 50),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 30),
-                          ],
+                      /* LOGOUT */
+                      OutlinedButton.icon(
+                        onPressed: () => _handleLogout(context, request),
+                        icon: const Icon(Icons.logout),
+                        label: const Text("Logout"),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.red,
+                          side: const BorderSide(color: Colors.red),
+                          minimumSize: const Size(double.infinity, 50),
                         ),
                       ),
+
+                      const SizedBox(height: 12),
+
+                      /* DELETE ACCOUNT */
+                      OutlinedButton.icon(
+                        onPressed: () => _handleDeleteAccount(context, request),
+                        icon: const Icon(Icons.delete),
+                        label: const Text("Delete Account"),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.red,
+                          side: const BorderSide(color: Colors.red),
+                          minimumSize: const Size(double.infinity, 50),
+                        ),
+                      ),
+
+                      const SizedBox(height: 40),
                     ],
                   ),
                 ),
     );
   }
 
-  Widget _buildInfoCard({
-    required IconData icon,
-    required String label,
-    required String value,
-    required Color color,
-  }) {
+  Widget _buildHeader(Color primaryBlue) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      width: double.infinity,
+      padding: const EdgeInsets.only(bottom: 30),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(15),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        color: primaryBlue,
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(30)),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
+          const SizedBox(height: 15),
+          CircleAvatar(
+            radius: 50,
+            backgroundColor: Colors.white,
+            child: Text(
+              _profileData!['username'][0].toUpperCase(),
+              style: TextStyle(
+                fontSize: 40,
+                fontWeight: FontWeight.bold,
+                color: primaryBlue,
+              ),
             ),
-            child: Icon(icon, color: color, size: 24),
           ),
           const SizedBox(height: 12),
           Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey[600],
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value,
+            _profileData!['username'],
             style: const TextStyle(
-              fontSize: 16,
+              fontSize: 24,
               fontWeight: FontWeight.bold,
-              color: Colors.black87,
+              color: Colors.white,
             ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
           ),
+          Text(
+            _profileData!['email'],
+            style: const TextStyle(color: Colors.white70),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetails(Color primaryBlue) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Column(
+        children: [
+          _infoRow("Weight", "${_profileData!['weight']} kg"),
+          _infoRow("Height", "${_profileData!['height']} cm"),
+          _infoRow("Gender", _profileData!['gender'] ?? "-"),
+          _infoRow("Location", _profileData!['base_location'] ?? "-"),
+        ],
+      ),
+    );
+  }
+
+  Widget _infoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: const TextStyle(color: Colors.grey)),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
         ],
       ),
     );

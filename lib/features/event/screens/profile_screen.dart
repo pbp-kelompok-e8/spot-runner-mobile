@@ -1,50 +1,44 @@
 import 'package:flutter/material.dart';
 import 'package:pbp_django_auth/pbp_django_auth.dart';
 import 'package:provider/provider.dart';
+
 import 'package:spot_runner_mobile/core/widgets/left_drawer.dart';
+import 'package:spot_runner_mobile/features/auth/screens/login.dart';
+import 'package:spot_runner_mobile/features/auth/screens/change_password.dart';
+import 'package:spot_runner_mobile/features/auth/screens/edit_profile.dart';
 
-// Model sederhana untuk simulasi data pengguna
-class UserProfile {
-  final String username;
-  final String baseLocation;
-  final String joinedDate;
-  final String lastLogin;
-  final String passwordLength; // Hanya untuk simulasi panjang password
-  final String profilePhotoUrl;
-
-  UserProfile({
-    required this.username,
-    required this.baseLocation,
-    required this.joinedDate,
-    required this.lastLogin,
-    this.passwordLength = '123456', // Default dummy
-    this.profilePhotoUrl = '',
-  });
-}
-
-class ProfileScreen extends StatelessWidget {
+// UBAH JADI STATEFUL WIDGET AGAR BISA SETSTATE
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    // --- SIMULASI DATA USER YANG SEDANG LOGIN ---
-    final request = context.watch<CookieRequest>();
-    // Menggunakan Map kosong jika request.jsonData adalah null untuk menghindari error
-    final response = request.jsonData ?? {}; 
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
 
-    final currentUser = UserProfile(
-      username: response['username'] ?? 'RunnerDefault',
-      baseLocation: response['base_location'] ?? 'Jakarta, Indonesia',
-      joinedDate: response['joined'] ?? '2023-01-15',
-      lastLogin: response['last_login'] ?? '2025-12-01 10:00:00',
+class _ProfileScreenState extends State<ProfileScreen> {
+  
+  // Fungsi fetch dipisah agar bisa dipanggil ulang
+  Future<Map<String, dynamic>> fetchProfile(CookieRequest request) async {
+    final response = await request.get(
+      'http://127.0.0.1:8000/event-organizer/profile/json/',
     );
+    return response;
+  }
 
-    // Definisi warna
-    final Color primaryBlue = const Color(0xFF1D4ED8);
-    final Color logoutGrey = const Color(0xFF9CA3AF);
-    final Color deleteRed = const Color(0xFFDC2626);
-    final Color badgeBg = const Color(0xFFFEF9C3);
-    final Color badgeText = const Color(0xFFCA8A04);
+  // Method untuk refresh halaman
+  void refresh() {
+    setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final request = context.watch<CookieRequest>();
+
+    const Color primaryBlue = Color(0xFF1D4ED8);
+    const Color logoutGrey = Color(0xFF9CA3AF);
+    const Color deleteRed = Color(0xFFDC2626);
+    const Color badgeBg = Color(0xFFFEF9C3);
+    const Color badgeText = Color(0xFFCA8A04);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF3F4F6),
@@ -54,7 +48,7 @@ class ProfileScreen extends StatelessWidget {
         centerTitle: true,
         title: Row(
           mainAxisSize: MainAxisSize.min,
-          children: [
+          children: const [
             Text(
               "SpotRunner",
               style: TextStyle(
@@ -63,310 +57,373 @@ class ProfileScreen extends StatelessWidget {
                 fontStyle: FontStyle.italic,
               ),
             ),
-            const SizedBox(width: 4),
+            SizedBox(width: 4),
             Icon(Icons.directions_run, color: primaryBlue),
           ],
         ),
       ),
       drawer: const LeftDrawer(),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 30),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, 5),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // --- JUDUL ---
-                const Center(
-                  child: Text(
-                    "Your Profile",
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
 
-                // --- BADGE ---
-                Center(
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: badgeBg,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
+      body: FutureBuilder<Map<String, dynamic>>(
+        future: fetchProfile(request), // Memanggil fungsi fetch
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (snapshot.hasError) {
+             return Center(child: Text("Error: ${snapshot.error}"));
+          }
+
+          if (!snapshot.hasData || snapshot.data == null) {
+            return const Center(child: Text("No profile data found"));
+          }
+
+          // Handle struktur data: cek apakah ada key 'data' atau langsung di root
+          final dataRaw = snapshot.data!;
+          final profile = dataRaw.containsKey('data') ? dataRaw['data'] : dataRaw;
+
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(20),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 30),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 5),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Center(
                     child: Text(
-                      "Event Organizer",
+                      "Your Profile",
                       style: TextStyle(
-                        color: badgeText,
+                        fontSize: 24,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 30),
 
-                // --- INFO DINAMIS (JOINED & LOGIN) ---
-                _buildInfoText("Joined", currentUser.joinedDate),
-                const SizedBox(height: 16),
-                _buildInfoText("Last login", currentUser.lastLogin),
-                const SizedBox(height: 24),
+                  const SizedBox(height: 20),
 
-                // --- FORM FIELDS DINAMIS (READ-ONLY) ---
-                _buildLabel("Username"),
-                // Gunakan _buildTextField untuk tampilan read-only
-                _buildTextField(initialValue: currentUser.username, readOnly: true),
-                const SizedBox(height: 16),
-
-                _buildLabel("Profile Photo URL"),
-                _buildTextField(initialValue: currentUser.profilePhotoUrl.isEmpty ? "(Not set)" : currentUser.profilePhotoUrl, readOnly: true),
-                const SizedBox(height: 16),
-
-                _buildLabel("Base Location"),
-                _buildTextField(initialValue: currentUser.baseLocation, readOnly: true),
-                const SizedBox(height: 16),
-
-                _buildLabel("Password"),
-                // Gunakan tampilan read-only dengan teks tersembunyi
-                _buildPasswordDisplay(currentUser.passwordLength),
-                const SizedBox(height: 12),
-
-                // --- FORGOT PASSWORD ---
-                Row(
-                  children: [
-                    Text(
-                      "Forget your password? ",
-                      style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                  // ===== PHOTO PROFILE =====
+                  Center(
+                    child: CircleAvatar(
+                      radius: 50,
+                      backgroundColor: Colors.grey.shade200,
+                      backgroundImage:
+                          profile['profile_picture'] != null &&
+                                  profile['profile_picture']
+                                      .toString()
+                                      .isNotEmpty
+                              ? NetworkImage(profile['profile_picture'])
+                              : null,
+                      child: profile['profile_picture'] == null ||
+                              profile['profile_picture']
+                                  .toString()
+                                  .isEmpty
+                          ? const Icon(
+                              Icons.person,
+                              size: 50,
+                              color: Colors.grey,
+                            )
+                          : null,
                     ),
-                    GestureDetector(
-                      onTap: () {
-                        // Logika navigasi ke ganti password
-                      },
-                      child: Text(
-                        "Change password",
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // ===== BADGE =====
+                  Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: badgeBg,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Text(
+                        "Event Organizer",
                         style: TextStyle(
-                          color: primaryBlue,
+                          color: badgeText,
                           fontWeight: FontWeight.bold,
-                          fontSize: 13,
                         ),
                       ),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 30),
-
-                // --- TOMBOL ACTION ---
-
-                // 1. LOG OUT
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: logoutGrey,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      elevation: 0,
-                    ),
-                    onPressed: () {
-                      // Logika Log out
-                    },
-                    child: const Text(
-                      "Log out",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
                   ),
-                ),
-                const SizedBox(height: 16),
 
-                // 2. EDIT PROFILE
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: primaryBlue,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      elevation: 0,
-                    ),
-                    onPressed: () {
-                      // Logika navigasi ke halaman edit profile
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Navigasi ke Halaman Edit Profile (Belum diimplementasi)')),
-                      );
-                    },
-                    child: const Text(
-                      "Edit Profile",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 40),
+                  const SizedBox(height: 30),
 
-                // --- DIVIDER PEMISAH ZONA BAHAYA ---
-                Divider(color: Colors.grey[300], thickness: 1),
-                const SizedBox(height: 20),
+                  _infoText("Joined", profile['joined'] ?? '-'),
+                  const SizedBox(height: 16),
+                  _infoText("Last login", profile['last_login'] ?? "-"),
 
-                // 3. DELETE ACCOUNT (ZONA BAHAYA)
-                const SizedBox(height: 10),
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: OutlinedButton(
-                    style: OutlinedButton.styleFrom(
-                      side: BorderSide(color: deleteRed, width: 2),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                  const SizedBox(height: 24),
+
+                  _label("Username"),
+                  _display(profile['username'] ?? '-'),
+                  const SizedBox(height: 16),
+
+                  _label("Profile Photo URL"),
+                  _display(profile['profile_picture'] ?? "(Not set)"),
+                  const SizedBox(height: 16),
+
+                  _label("Base Location"),
+                  _display(profile['base_location'] ?? "-"),
+                  const SizedBox(height: 16),
+
+                  _label("Password"),
+                  _display("••••••••"),
+                  const SizedBox(height: 12),
+
+                  Row(
+                    children: [
+                      Text(
+                        "Forget your password? ",
+                        style:
+                            TextStyle(color: Colors.grey[600], fontSize: 13),
                       ),
-                    ),
-                    onPressed: () {
-                      // Logika delete account
-                    },
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.delete_forever, color: deleteRed),
-                        const SizedBox(width: 8),
-                        Text(
-                          "Delete Account",
+                      InkWell(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const ChangePasswordPage(),
+                            ),
+                          );
+                        },
+                        child: const Text(
+                          "Change password",
                           style: TextStyle(
-                            color: deleteRed,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
+                            color: primaryBlue,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
                           ),
                         ),
-                      ],
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 30),
+
+                  // 1. LOG OUT
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: logoutGrey,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 0,
+                      ),
+                      onPressed: () async {
+                        final request = context.read<CookieRequest>();
+                        try {
+                          await request.logout(
+                              "http://127.0.0.1:8000/auth/logout/");
+                          if (!context.mounted) return;
+                          Navigator.pushAndRemoveUntil(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) => const LoginPage()),
+                            (_) => false,
+                          );
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                                content: Text('Logged out successfully')),
+                          );
+                        } catch (e) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Logout error: $e')),
+                          );
+                        }
+                      },
+                      child: const Text(
+                        "Log out",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ),
                   ),
-                ),
-              ],
+
+                  const SizedBox(height: 16),
+
+                  // 2. EDIT PROFILE (BAGIAN PENTING)
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: primaryBlue,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 0,
+                      ),
+                      onPressed: () async {
+                        // Gunakan 'await' untuk menunggu hasil dari halaman Edit
+                        final result = await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) =>
+                                  const EditProfilePage()),
+                        );
+
+                        // Jika result == true (berhasil simpan), refresh halaman ini
+                        if (result == true) {
+                          refresh(); 
+                        }
+                      },
+                      child: const Text(
+                        "Edit Profile",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 40),
+
+                  Divider(color: Colors.grey[300], thickness: 1),
+                  const SizedBox(height: 20),
+
+                  // 3. DELETE ACCOUNT
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(color: deleteRed, width: 2),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      onPressed: () async {
+                        final shouldDelete = await showDialog<bool>(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            title: const Text('Delete Account'),
+                            content: const Text(
+                                'Are you sure you want to delete your account? This action cannot be undone.'),
+                            actions: [
+                              TextButton(
+                                  onPressed: () =>
+                                      Navigator.pop(ctx, false),
+                                  child: const Text('Cancel')),
+                              TextButton(
+                                  onPressed: () =>
+                                      Navigator.pop(ctx, true),
+                                  child: const Text('Delete',
+                                      style:
+                                          TextStyle(color: Colors.red))),
+                            ],
+                          ),
+                        );
+                        if (shouldDelete != true) return;
+
+                        final request = context.read<CookieRequest>();
+                        const String deleteUrl =
+                            'http://127.0.0.1:8000/event-organizer/delete-account-flutter/';
+                        try {
+                          final resp = await request.post(deleteUrl, {});
+                          if (resp != null &&
+                              resp['status'] == 'success') {
+                            if (context.mounted) {
+                              Navigator.pushReplacement(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) =>
+                                        const LoginPage()),
+                              );
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                    content: Text('Account deleted')),
+                              );
+                            }
+                          } else {
+                            final msg = resp != null &&
+                                    resp['message'] != null
+                                ? resp['message']
+                                : 'Failed to delete account';
+                            ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text(msg)));
+                          }
+                        } catch (e) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Error: $e')));
+                        }
+                      },
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.delete_forever, color: deleteRed),
+                          const SizedBox(width: 8),
+                          Text(
+                            "Delete Account",
+                            style: TextStyle(
+                              color: deleteRed,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ),
+          );
+        },
       ),
     );
   }
 
-  // Widget pembantu untuk menampilkan info statis (Joined, Last Login)
-  Widget _buildInfoText(String label, String value) {
+  // ===== Helper =====
+  Widget _infoText(String label, String value) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: TextStyle(color: Colors.grey[500], fontSize: 14),
-        ),
+        Text(label,
+            style: TextStyle(color: Colors.grey[500], fontSize: 14)),
         const SizedBox(height: 4),
-        Text(
-          value,
-          style: const TextStyle(
-            color: Color(0xFF374151),
-            fontSize: 16,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
+        Text(value,
+            style:
+                const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
       ],
     );
   }
 
-  // Widget pembantu untuk menampilkan label di atas field
-  Widget _buildLabel(String label) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8.0),
-      child: Text(
-        label,
-        style: const TextStyle(
-          color: Color(0xFF374151),
-          fontWeight: FontWeight.w500,
-          fontSize: 14,
-        ),
-      ),
-    );
-  }
+  Widget _label(String text) => Text(text,
+      style:
+          const TextStyle(fontWeight: FontWeight.w500, fontSize: 14));
 
-  // Widget pembantu untuk menampilkan field data (sekarang readOnly default true)
-  Widget _buildTextField({
-    String? initialValue,
-    String? hintText,
-    bool isObscure = false,
-    bool readOnly = true, // <-- SETELAH INI MENJADI TRUE SECARA DEFAULT
-  }) {
-    return TextFormField(
-      initialValue: initialValue,
-      obscureText: isObscure,
-      readOnly: readOnly, // <-- Kunci agar tidak bisa diubah
-      style: TextStyle(color: readOnly ? Colors.black87 : Colors.black),
-      decoration: InputDecoration(
-        hintText: hintText,
-        hintStyle: TextStyle(color: Colors.grey[400]),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        border: OutlineInputBorder(
+  Widget _display(String value) => Container(
+        width: double.infinity,
+        padding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.grey.shade300),
           borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: Colors.grey.shade300),
         ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          // Ubah warna border agar terlihat seperti read-only
-          borderSide: BorderSide(color: Colors.grey.shade300), 
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          // Biarkan fokus border tetap normal, tapi readOnly akan mencegah keyboard muncul
-          borderSide: BorderSide(color: readOnly ? Colors.grey.shade300 : Colors.blue.shade700),
-        ),
-        fillColor: Colors.white,
-        filled: true,
-      ),
-    );
-  }
-  
-  // Widget khusus untuk menampilkan password yang tersembunyi
-  Widget _buildPasswordDisplay(String password) {
-    // Membuat string tersembunyi (contoh: 8 karakter * )
-    String hiddenText = '•' * password.length; 
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.shade300),
-      ),
-      child: Text(
-        hiddenText,
-        style: const TextStyle(
-          color: Colors.black,
-          fontSize: 16,
-        ),
-      ),
-    );
-  }
+        child: Text(value, style: const TextStyle(fontSize: 16)),
+      );
 }
