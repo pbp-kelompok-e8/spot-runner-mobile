@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:spot_runner_mobile/core/config/api_config.dart';
 import 'package:spot_runner_mobile/core/screens/menu.dart';
 import 'package:spot_runner_mobile/features/auth/screens/login.dart';
 import 'package:spot_runner_mobile/features/auth/screens/profile.dart';
@@ -51,7 +52,9 @@ class LeftDrawer extends StatelessWidget {
                   onTap: () {
                     Navigator.pushReplacement(
                       context,
-                      MaterialPageRoute(builder: (context) => MyHomePage(username: username)),
+                      MaterialPageRoute(
+                        builder: (context) => MyHomePage(username: username),
+                      ),
                     );
                   },
                 ),
@@ -70,7 +73,10 @@ class LeftDrawer extends StatelessWidget {
                     // TODO: Navigate ke Profile
                     Navigator.pushReplacement(
                       context,
-                      MaterialPageRoute(builder: (context) => RunnerProfilePage(username: username)),
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            RunnerProfilePage(username: username),
+                      ),
                     );
                   },
                 ),
@@ -80,8 +86,10 @@ class LeftDrawer extends StatelessWidget {
                   onTap: () {
                     Navigator.pushReplacement(
                       context,
-                      MaterialPageRoute(builder: (context) => const MerchandisePage()),
-                    );                    
+                      MaterialPageRoute(
+                        builder: (context) => const MerchandisePage(),
+                      ),
+                    );
                   },
                 ),
               ],
@@ -99,9 +107,7 @@ class LeftDrawer extends StatelessWidget {
               style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
             ),
             onTap: () async {
-              final response = await request.logout(
-                "http://localhost:8000/auth/logout/",
-              );
+              final response = await request.logout(ApiConfig.logout);
               String message = response["message"];
               if (context.mounted) {
                 if (response['status']) {

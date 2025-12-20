@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:pbp_django_auth/pbp_django_auth.dart';
 import 'package:provider/provider.dart';
+import 'package:spot_runner_mobile/core/config/api_config.dart';
 import 'package:spot_runner_mobile/features/merchandise/models/redemption_model.dart';
 import 'package:spot_runner_mobile/features/merchandise/utils/image_helper.dart';
 import 'dart:async';
@@ -38,9 +39,7 @@ class _HistoryPageState extends State<HistoryPage> {
     final request = context.read<CookieRequest>();
 
     try {
-      final response = await request.get(
-        'http://localhost:8000/merchandise/redemption/json/',
-      );
+      final response = await request.get(ApiConfig.redeemMerchandise);
 
       if (mounted) {
         final redemptionResponse = RedemptionResponse.fromJson(response);

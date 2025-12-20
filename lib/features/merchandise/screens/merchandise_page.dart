@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:pbp_django_auth/pbp_django_auth.dart';
 import 'package:provider/provider.dart';
+import 'package:spot_runner_mobile/core/config/api_config.dart';
 import 'package:spot_runner_mobile/features/merchandise/models/merchandise_model.dart';
 import 'package:spot_runner_mobile/features/merchandise/widgets/product_card.dart'; // Import widget baru
 import 'package:spot_runner_mobile/core/widgets/left_drawer.dart';
@@ -19,6 +20,7 @@ class _MerchandisePageState extends State<MerchandisePage> {
   String selectedCategory = 'All';
   int userCoins = 0;
   String userType = 'guest';
+  String username = 'Guest';
   bool isLoadingCoins = true;
   int _refreshKey = 0; // Key untuk force rebuild
   Timer? _refreshTimer; // Timer untuk auto refresh
@@ -38,7 +40,7 @@ class _MerchandisePageState extends State<MerchandisePage> {
     _startAutoRefresh();
   }
 
-   @override
+  @override
   void dispose() {
     _refreshTimer?.cancel(); // Cancel timer saat dispose
     super.dispose();
@@ -60,9 +62,7 @@ class _MerchandisePageState extends State<MerchandisePage> {
   Future<void> fetchUserCoins() async {
     final request = context.read<CookieRequest>();
     try {
-      final response = await request.get(
-        'http://localhost:8000/merchandise/user-coins/',
-      );
+      final response = await request.get(ApiConfig.userCoins);
 
       // Debug: Print response
       debugPrint('User coins response: $response');
@@ -71,6 +71,8 @@ class _MerchandisePageState extends State<MerchandisePage> {
         setState(() {
           userCoins = response['coins'] ?? 0;
           userType = response['user_type'] ?? 'guest';
+          username =
+              response['username'] ?? 'Guest'; // Ambil username dari response
           isLoadingCoins = false;
         });
       }
@@ -79,13 +81,14 @@ class _MerchandisePageState extends State<MerchandisePage> {
       if (mounted) {
         setState(() {
           isLoadingCoins = false;
+          username = 'Guest';
         });
       }
     }
   }
 
   Future<List<Merchandise>> fetchMerchandise(CookieRequest request) async {
-    String url = 'http://localhost:8000/merchandise/json/';
+    String url = ApiConfig.merchandiseJson;
     if (selectedCategory != 'All') {
       url += '?category=$selectedCategory';
     }
@@ -130,7 +133,7 @@ class _MerchandisePageState extends State<MerchandisePage> {
         backgroundColor: Theme.of(context).colorScheme.primary,
         iconTheme: const IconThemeData(color: Colors.white),
       ),
-      drawer: const LeftDrawer(),
+      drawer: LeftDrawer(username: username),
       body: RefreshIndicator(
         onRefresh: () async {
           await fetchUserCoins();
@@ -298,18 +301,24 @@ class _MerchandisePageState extends State<MerchandisePage> {
       child: Column(
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.start,
             children: [
               Container(
                 padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.amber.shade100,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.monetization_on,
-                  color: Colors.amber.shade700,
-                  size: 32,
+
+                child: Image.asset(
+                  'lib/assets/images/coin-icon.png',
+                  width: 64,
+                  height: 64,
+                  fit: BoxFit.contain,
+                  // Error handling jika gambar tidak ditemukan
+                  errorBuilder: (context, error, stackTrace) {
+                    return Icon(
+                      Icons.monetization_on,
+                      color: Colors.amber.shade700,
+                      size: 64,
+                    );
+                  },
                 ),
               ),
               const SizedBox(width: 16),

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:pbp_django_auth/pbp_django_auth.dart';
 import 'package:provider/provider.dart';
+import 'package:spot_runner_mobile/core/config/api_config.dart';
 import 'package:spot_runner_mobile/features/merchandise/models/merchandise_model.dart';
 
 class EditProductPage extends StatefulWidget {
@@ -58,7 +59,7 @@ class _EditProductPageState extends State<EditProductPage> {
 
     try {
       final response = await request.postJson(
-        'http://localhost:8000/merchandise/edit-flutter/${widget.merchandise.id}/',
+        ApiConfig.editMerchandiseUrl(widget.merchandise.id),
         jsonEncode({
           'name': _nameController.text.trim(),
           'price_coins': int.parse(_priceController.text),

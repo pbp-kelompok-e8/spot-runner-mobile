@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:spot_runner_mobile/core/config/api_config.dart';
 import 'package:spot_runner_mobile/features/auth/screens/login.dart';
 import 'package:pbp_django_auth/pbp_django_auth.dart';
 import 'package:provider/provider.dart';
@@ -64,12 +65,12 @@ class _RegisterPageState extends State<RegisterPage> {
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 40.0),
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 450), 
+            constraints: const BoxConstraints(maxWidth: 450),
             child: Container(
               padding: const EdgeInsets.all(32.0),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(24.0), 
+                borderRadius: BorderRadius.circular(24.0),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withOpacity(0.05),
@@ -97,20 +98,21 @@ class _RegisterPageState extends State<RegisterPage> {
                     Text(
                       'Create your Spot Runner account!',
                       textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 14.0,
-                        color: textGrey,
-                      ),
+                      style: TextStyle(fontSize: 14.0, color: textGrey),
                     ),
                     const SizedBox(height: 32.0),
 
                     // --- INPUT FIELDS ---
-                    
+
                     // Username
                     _buildLabel('Username', textLabel),
                     TextFormField(
                       controller: _usernameController,
-                      decoration: _inputDecoration('Enter your username', inputBorder, primaryBlue),
+                      decoration: _inputDecoration(
+                        'Enter your username',
+                        inputBorder,
+                        primaryBlue,
+                      ),
                       // -- Logika 1: Reset error server saat user mengetik --
                       onChanged: (value) {
                         if (_usernameServerMsg != null) {
@@ -137,9 +139,14 @@ class _RegisterPageState extends State<RegisterPage> {
                     _buildLabel('Password', textLabel),
                     TextFormField(
                       controller: _passwordController,
-                      decoration: _inputDecoration('Enter your password', inputBorder, primaryBlue),
+                      decoration: _inputDecoration(
+                        'Enter your password',
+                        inputBorder,
+                        primaryBlue,
+                      ),
                       obscureText: true,
-                      validator: (value) => value!.isEmpty ? 'Please enter your password' : null,
+                      validator: (value) =>
+                          value!.isEmpty ? 'Please enter your password' : null,
                     ),
                     const SizedBox(height: 16.0),
 
@@ -147,11 +154,17 @@ class _RegisterPageState extends State<RegisterPage> {
                     _buildLabel('Confirm Password', textLabel),
                     TextFormField(
                       controller: _confirmPasswordController,
-                      decoration: _inputDecoration('Confirm your password', inputBorder, primaryBlue),
+                      decoration: _inputDecoration(
+                        'Confirm your password',
+                        inputBorder,
+                        primaryBlue,
+                      ),
                       obscureText: true,
                       validator: (value) {
-                        if (value!.isEmpty) return 'Please confirm your password';
-                        if (value != _passwordController.text) return 'Passwords do not match';
+                        if (value!.isEmpty)
+                          return 'Please confirm your password';
+                        if (value != _passwordController.text)
+                          return 'Passwords do not match';
                         return null;
                       },
                     ),
@@ -161,7 +174,11 @@ class _RegisterPageState extends State<RegisterPage> {
                     _buildLabel('Email', textLabel),
                     TextFormField(
                       controller: _emailController,
-                      decoration: _inputDecoration('Enter your email', inputBorder, primaryBlue),
+                      decoration: _inputDecoration(
+                        'Enter your email',
+                        inputBorder,
+                        primaryBlue,
+                      ),
                       keyboardType: TextInputType.emailAddress,
                       onChanged: (value) {
                         if (_emailServerMsg != null) {
@@ -197,24 +214,33 @@ class _RegisterPageState extends State<RegisterPage> {
                                 value: 'runner',
                                 groupValue: _role,
                                 activeColor: primaryBlue,
-                                onChanged: (val) => setState(() => _role = val!),
+                                onChanged: (val) =>
+                                    setState(() => _role = val!),
                               ),
-                              Text('Runner', style: TextStyle(color: textLabel)),
+                              Text(
+                                'Runner',
+                                style: TextStyle(color: textLabel),
+                              ),
                             ],
                           ),
                         ),
                         const SizedBox(width: 16.0),
                         GestureDetector(
-                          onTap: () => setState(() => _role = 'event_organizer'),
+                          onTap: () =>
+                              setState(() => _role = 'event_organizer'),
                           child: Row(
                             children: [
                               Radio<String>(
                                 value: 'event_organizer',
                                 groupValue: _role,
                                 activeColor: primaryBlue,
-                                onChanged: (val) => setState(() => _role = val!),
+                                onChanged: (val) =>
+                                    setState(() => _role = val!),
                               ),
-                              Text('Event Organizer', style: TextStyle(color: textLabel)),
+                              Text(
+                                'Event Organizer',
+                                style: TextStyle(color: textLabel),
+                              ),
                             ],
                           ),
                         ),
@@ -223,11 +249,21 @@ class _RegisterPageState extends State<RegisterPage> {
                     const SizedBox(height: 16.0),
 
                     // --- LOCATION DROPDOWN ---
-                    _buildLabel(_role == 'event_organizer' ? 'Base Location' : 'Location', textLabel),
+                    _buildLabel(
+                      _role == 'event_organizer' ? 'Base Location' : 'Location',
+                      textLabel,
+                    ),
                     DropdownButtonFormField<String>(
                       value: _selectedLocation,
-                      hint: Text('Select your location', style: TextStyle(color: Colors.grey[400], fontSize: 14)),
-                      decoration: _inputDecoration('', inputBorder, primaryBlue),
+                      hint: Text(
+                        'Select your location',
+                        style: TextStyle(color: Colors.grey[400], fontSize: 14),
+                      ),
+                      decoration: _inputDecoration(
+                        '',
+                        inputBorder,
+                        primaryBlue,
+                      ),
                       icon: const Icon(Icons.keyboard_arrow_down),
                       items: _locations.map((String loc) {
                         return DropdownMenuItem<String>(
@@ -235,8 +271,10 @@ class _RegisterPageState extends State<RegisterPage> {
                           child: Text(loc),
                         );
                       }).toList(),
-                      onChanged: (val) => setState(() => _selectedLocation = val),
-                      validator: (value) => value == null ? 'Please select your location' : null,
+                      onChanged: (val) =>
+                          setState(() => _selectedLocation = val),
+                      validator: (value) =>
+                          value == null ? 'Please select your location' : null,
                     ),
                     const SizedBox(height: 16.0),
 
@@ -245,8 +283,13 @@ class _RegisterPageState extends State<RegisterPage> {
                       _buildLabel('Profile Photo', textLabel),
                       TextFormField(
                         controller: _profilePictureController,
-                        decoration: _inputDecoration('Enter Image URL', inputBorder, primaryBlue),
-                        validator: (value) => value!.isEmpty ? 'Please enter image URL' : null,
+                        decoration: _inputDecoration(
+                          'Enter Image URL',
+                          inputBorder,
+                          primaryBlue,
+                        ),
+                        validator: (value) =>
+                            value!.isEmpty ? 'Please enter image URL' : null,
                       ),
                       const SizedBox(height: 16.0),
                     ],
@@ -269,60 +312,80 @@ class _RegisterPageState extends State<RegisterPage> {
                             "password_confirm": _confirmPasswordController.text,
                             "email": _emailController.text,
                             "role": _role,
-                            "base_location": _formatLocationValue(_selectedLocation!),
+                            "base_location": _formatLocationValue(
+                              _selectedLocation!,
+                            ),
                           };
 
                           if (_role == 'event_organizer') {
-                            data["profile_picture"] = _profilePictureController.text;
+                            data["profile_picture"] =
+                                _profilePictureController.text;
                           }
 
                           try {
                             final response = await request.postJson(
-                              "http://localhost:8000/auth/register/", 
+                              ApiConfig.register,
                               jsonEncode(data),
                             );
 
                             if (context.mounted) {
                               if (response['status'] == 'success') {
-                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                                  content: Text('Successfully registered! Please login.'),
-                                  backgroundColor: Colors.green,
-                                ));
-                                Navigator.pushReplacement(context,
-                                    MaterialPageRoute(builder: (context) => const LoginPage()));
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      'Successfully registered! Please login.',
+                                    ),
+                                    backgroundColor: Colors.green,
+                                  ),
+                                );
+                                Navigator.pushReplacement(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => const LoginPage(),
+                                  ),
+                                );
                               } else {
                                 // --- MENANGANI ERROR DARI SERVER ---
-                                String message = response['message'] ?? 'Failed to register';
-                                
+                                String message =
+                                    response['message'] ?? 'Failed to register';
+
                                 setState(() {
                                   // Logika deteksi pesan error dari Django/Backend
                                   // Jika pesan mengandung kata "username"
-                                  if (message.toLowerCase().contains("username")) {
-                                    _usernameServerMsg = message; 
-                                  } 
+                                  if (message.toLowerCase().contains(
+                                    "username",
+                                  )) {
+                                    _usernameServerMsg = message;
+                                  }
                                   // Jika pesan mengandung kata "email"
-                                  else if (message.toLowerCase().contains("email")) {
+                                  else if (message.toLowerCase().contains(
+                                    "email",
+                                  )) {
                                     _emailServerMsg = message;
-                                  } 
+                                  }
                                   // Error lain yang tidak spesifik field
                                   else {
-                                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                                      content: Text(message),
-                                      backgroundColor: Colors.red,
-                                    ));
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(message),
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    );
                                   }
                                 });
-                                
+
                                 // Panggil ulang validate() untuk memunculkan teks merah di bawah input
                                 _formKey.currentState!.validate();
                               }
                             }
                           } catch (e) {
                             if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                                content: Text("Error: $e"),
-                                backgroundColor: Colors.red,
-                              ));
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text("Error: $e"),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
                             }
                           }
                         }
@@ -348,7 +411,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     // --- DIVIDER & FOOTER ---
                     Divider(color: Colors.grey[200], thickness: 1.5),
                     const SizedBox(height: 16.0),
-                    
+
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -360,7 +423,9 @@ class _RegisterPageState extends State<RegisterPage> {
                           onTap: () {
                             Navigator.pushReplacement(
                               context,
-                              MaterialPageRoute(builder: (context) => const LoginPage()),
+                              MaterialPageRoute(
+                                builder: (context) => const LoginPage(),
+                              ),
                             );
                           },
                           child: Text(
@@ -400,11 +465,18 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 
-  InputDecoration _inputDecoration(String hint, Color borderColor, Color focusColor) {
+  InputDecoration _inputDecoration(
+    String hint,
+    Color borderColor,
+    Color focusColor,
+  ) {
     return InputDecoration(
       hintText: hint,
       hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+      contentPadding: const EdgeInsets.symmetric(
+        horizontal: 16.0,
+        vertical: 12.0,
+      ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8.0),
         borderSide: BorderSide(color: borderColor),

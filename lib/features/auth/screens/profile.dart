@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart';
 import 'package:pbp_django_auth/pbp_django_auth.dart';
 import 'package:provider/provider.dart';
+import 'package:spot_runner_mobile/core/config/api_config.dart';
 import 'package:spot_runner_mobile/core/models/user_entry.dart';
 import 'package:spot_runner_mobile/features/auth/screens/login.dart';
 import 'package:spot_runner_mobile/core/screens/menu.dart'; // For navigation to Home
@@ -30,15 +31,20 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
   Future<void> _fetchProfileData() async {
     final request = context.read<CookieRequest>();
     try {
-      final response = await request.get('http://localhost:8000/${widget.username}/json');
-      
+      // final response = await request.get('http://localhost:8000/${widget.username}/json');
+      final response = await request.get(
+        ApiConfig.userProfile(widget.username),
+      );
+
       if (mounted) {
         setState(() {
           if (response['status'] == 'success') {
             _profileData = response;
           } else {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(response['message'] ?? "Failed to load profile")),
+              SnackBar(
+                content: Text(response['message'] ?? "Failed to load profile"),
+              ),
             );
           }
           _isLoading = false;
@@ -47,9 +53,9 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error: $e")),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Error: $e")));
       }
     }
   }
@@ -57,10 +63,10 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
   Future<void> _handleLogout() async {
     final request = context.read<CookieRequest>();
     try {
-      final response = await request.logout("http://localhost:8000/auth/logout/");
+      final response = await request.logout(ApiConfig.logout);
       if (context.mounted) {
         if (response['status'] == 'success') {
-            Navigator.pushReplacement(
+          Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (context) => const LoginPage()),
           );
@@ -79,9 +85,12 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete Account', style: TextStyle(color: Colors.red)),
+        title: const Text(
+          'Delete Account',
+          style: TextStyle(color: Colors.red),
+        ),
         content: const Text(
-          'Are you sure you want to delete your account? This action is permanent and cannot be undone. All your event history and coins will be lost.'
+          'Are you sure you want to delete your account? This action is permanent and cannot be undone. All your event history and coins will be lost.',
         ),
         actions: [
           TextButton(
@@ -89,7 +98,10 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
             child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
             onPressed: () async {
               // Call API to delete account
               Navigator.pop(context);
@@ -105,7 +117,7 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
   @override
   Widget build(BuildContext context) {
     final Color bgPage = const Color(0xFFF9F9F9);
-    
+
     if (_isLoading) {
       return Scaffold(
         backgroundColor: bgPage,
@@ -122,13 +134,16 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
     }
 
     // Extract data safely
-    final userData = _profileData!; // Assuming flattened or specific structure from API
+    final userData =
+        _profileData!; // Assuming flattened or specific structure from API
     final username = userData['username'] ?? 'User';
     final location = userData['base_location'] ?? 'Not set';
-    final lastLogin = userData['last_login'] != null 
-        ? DateFormat('MMMM dd, yyyy, hh:mm a').format(DateTime.parse(userData['last_login']))
+    final lastLogin = userData['last_login'] != null
+        ? DateFormat(
+            'MMMM dd, yyyy, hh:mm a',
+          ).format(DateTime.parse(userData['last_login']))
         : 'Never';
-    
+
     // Mocking list data if not present in the current API response structure
     // In a real scenario, ensure your API returns 'attendance_list' and 'user_reviews'
     final List<dynamic> attendanceList = userData['attendance_list'] ?? [];
@@ -141,11 +156,14 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.of(context).pop(), 
+          onPressed: () => Navigator.of(context).pop(),
         ),
         title: Text(
           "$username - Spot Runner",
-          style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+          style: const TextStyle(
+            color: Colors.black,
+            fontWeight: FontWeight.bold,
+          ),
         ),
       ),
       body: SingleChildScrollView(
@@ -177,18 +195,29 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
                         children: [
                           const Text(
                             "Your Profile",
-                            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black87),
+                            style: TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black87,
+                            ),
                           ),
                           const SizedBox(width: 12),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 4,
+                            ),
                             decoration: BoxDecoration(
                               color: Colors.green[100],
                               borderRadius: BorderRadius.circular(20),
                             ),
                             child: Text(
                               "Runner",
-                              style: TextStyle(color: Colors.green[800], fontWeight: FontWeight.bold, fontSize: 12),
+                              style: TextStyle(
+                                color: Colors.green[800],
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
                             ),
                           ),
                         ],
@@ -210,11 +239,14 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
                   const SizedBox(height: 16),
                   _buildDisabledInput("Password", "********"),
                   const SizedBox(height: 8),
-                  
+
                   // Forgot Password Link
                   Row(
                     children: [
-                      Text("Forgot your password? ", style: TextStyle(color: Colors.grey[500], fontSize: 14)),
+                      Text(
+                        "Forgot your password? ",
+                        style: TextStyle(color: Colors.grey[500], fontSize: 14),
+                      ),
                       GestureDetector(
                         onTap: () {
                           // Handle change password navigation
@@ -241,19 +273,27 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
                           backgroundColor: Colors.grey[500],
                           foregroundColor: Colors.white,
                           side: BorderSide.none,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(6),
+                          ),
                         ),
                         child: const Text("Log out"),
                       ),
                       ElevatedButton(
                         onPressed: () {
                           // Handle Edit Profile
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Edit Profile clicked")));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text("Edit Profile clicked"),
+                            ),
+                          );
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.blue[600],
                           foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(6),
+                          ),
                         ),
                         child: const Text("Edit Profile"),
                       ),
@@ -262,12 +302,14 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.red[600],
                           foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(6),
+                          ),
                         ),
                         child: const Text("Delete Account"),
                       ),
                     ],
-                  )
+                  ),
                 ],
               ),
             ),
@@ -296,17 +338,32 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
                     children: [
                       const Text(
                         "Event History",
-                        style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black87),
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
                       ),
                       ElevatedButton(
                         onPressed: () {
-                          Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => MyHomePage(username: username)));
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  MyHomePage(username: username),
+                            ),
+                          );
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.blue[600],
                           foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 10,
+                          ),
                         ),
                         child: const Text("Join New Event +"),
                       ),
@@ -318,7 +375,10 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
                     const Center(
                       child: Padding(
                         padding: EdgeInsets.symmetric(vertical: 20.0),
-                        child: Text("You haven't joined any events yet.", style: TextStyle(color: Colors.grey)),
+                        child: Text(
+                          "You haven't joined any events yet.",
+                          style: TextStyle(color: Colors.grey),
+                        ),
                       ),
                     )
                   else
@@ -330,9 +390,15 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
                         final record = attendanceList[index];
                         final event = record['event'];
                         final status = record['status'];
-                        final eventStatus = event['event_status']; // 'on_going', 'coming_soon', etc.
-                        
-                        return _buildEventCard(record, event, status, eventStatus);
+                        final eventStatus =
+                            event['event_status']; // 'on_going', 'coming_soon', etc.
+
+                        return _buildEventCard(
+                          record,
+                          event,
+                          status,
+                          eventStatus,
+                        );
                       },
                     ),
                 ],
@@ -360,7 +426,11 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
                 children: [
                   const Text(
                     "Your Reviews",
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black87),
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
                   ),
                   const SizedBox(height: 24),
 
@@ -371,10 +441,16 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
                       decoration: BoxDecoration(
                         color: Colors.grey[50],
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.grey[200]!, style: BorderStyle.solid), // Dashed border tricky in Flutter without package
+                        border: Border.all(
+                          color: Colors.grey[200]!,
+                          style: BorderStyle.solid,
+                        ), // Dashed border tricky in Flutter without package
                       ),
                       child: const Center(
-                        child: Text("You haven't written any reviews yet.", style: TextStyle(color: Colors.grey)),
+                        child: Text(
+                          "You haven't written any reviews yet.",
+                          style: TextStyle(color: Colors.grey),
+                        ),
                       ),
                     )
                   else
@@ -383,7 +459,8 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
                       child: ListView.separated(
                         scrollDirection: Axis.horizontal,
                         itemCount: userReviews.length,
-                        separatorBuilder: (context, index) => const SizedBox(width: 20),
+                        separatorBuilder: (context, index) =>
+                            const SizedBox(width: 20),
                         itemBuilder: (context, index) {
                           final review = userReviews[index];
                           return _buildReviewCard(review, username);
@@ -403,7 +480,14 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.black87)),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: Colors.black87,
+          ),
+        ),
         const SizedBox(height: 6),
         TextFormField(
           initialValue: value,
@@ -412,7 +496,10 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
           decoration: InputDecoration(
             filled: true,
             fillColor: Colors.grey[50],
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 12,
+            ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(6),
               borderSide: BorderSide(color: Colors.grey[300]!),
@@ -427,7 +514,12 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
     );
   }
 
-  Widget _buildEventCard(dynamic record, dynamic event, String status, String eventStatus) {
+  Widget _buildEventCard(
+    dynamic record,
+    dynamic event,
+    String status,
+    String eventStatus,
+  ) {
     Color borderColor = Colors.grey[300]!;
     Color bgColor = Colors.grey[50]!;
     Color badgeBg = Colors.grey[100]!;
@@ -482,7 +574,11 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
                   children: [
                     Text(
                       event['name'] ?? 'Unknown Event',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: Colors.black87,
+                      ),
                     ),
                     Text(
                       event['location_display'] ?? event['location'] ?? '',
@@ -494,14 +590,21 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: badgeBg,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
                       statusText,
-                      style: TextStyle(color: badgeText, fontSize: 12, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        color: badgeText,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                   if (status == 'attending') ...[
@@ -510,7 +613,9 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
                       onSelected: (value) {
                         if (value == 'cancel') {
                           // Handle cancel logic
-                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Cancel ${event['name']}")));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text("Cancel ${event['name']}")),
+                          );
                         }
                       },
                       itemBuilder: (BuildContext context) {
@@ -521,7 +626,10 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
                               children: [
                                 Icon(Icons.cancel, color: Colors.red, size: 18),
                                 SizedBox(width: 8),
-                                Text('Cancel Booking', style: TextStyle(color: Colors.red)),
+                                Text(
+                                  'Cancel Booking',
+                                  style: TextStyle(color: Colors.red),
+                                ),
                               ],
                             ),
                           ),
@@ -529,12 +637,12 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
                       },
                       icon: const Icon(Icons.more_vert, color: Colors.grey),
                     ),
-                  ]
+                  ],
                 ],
               ),
             ],
           ),
-          
+
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 16.0),
             child: Divider(color: Colors.grey[300]),
@@ -549,9 +657,17 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildDetailItem(Icons.calendar_today, "Date", event['event_date'] ?? '-'),
+                    _buildDetailItem(
+                      Icons.calendar_today,
+                      "Date",
+                      event['event_date'] ?? '-',
+                    ),
                     const SizedBox(height: 12),
-                    _buildDetailItem(Icons.category, "Type", record['category'] ?? '-'),
+                    _buildDetailItem(
+                      Icons.category,
+                      "Type",
+                      record['category'] ?? '-',
+                    ),
                   ],
                 ),
               ),
@@ -560,9 +676,17 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildDetailItem(Icons.location_on_outlined, "Location", event['location_display'] ?? '-'),
+                    _buildDetailItem(
+                      Icons.location_on_outlined,
+                      "Location",
+                      event['location_display'] ?? '-',
+                    ),
                     const SizedBox(height: 12),
-                    _buildDetailItem(Icons.qr_code, "Participant ID", record['participant_id'] ?? '-'),
+                    _buildDetailItem(
+                      Icons.qr_code,
+                      "Participant ID",
+                      record['participant_id'] ?? '-',
+                    ),
                   ],
                 ),
               ),
@@ -574,29 +698,39 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
             const SizedBox(height: 16),
             Align(
               alignment: Alignment.centerRight,
-              child: record['review'] != null 
-                ? Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.check_circle, color: Colors.green[600], size: 16),
-                      const SizedBox(width: 4),
-                      Text("Already reviewed", style: TextStyle(color: Colors.green[600], fontSize: 14)),
-                    ],
-                  )
-                : ElevatedButton.icon(
-                    onPressed: () {
-                      // Open review modal
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFCDFA5D),
-                      foregroundColor: Colors.black87,
-                      elevation: 0,
+              child: record['review'] != null
+                  ? Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.check_circle,
+                          color: Colors.green[600],
+                          size: 16,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          "Already reviewed",
+                          style: TextStyle(
+                            color: Colors.green[600],
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    )
+                  : ElevatedButton.icon(
+                      onPressed: () {
+                        // Open review modal
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFCDFA5D),
+                        foregroundColor: Colors.black87,
+                        elevation: 0,
+                      ),
+                      icon: const Icon(Icons.star, size: 16),
+                      label: const Text("Rate this event"),
                     ),
-                    icon: const Icon(Icons.star, size: 16),
-                    label: const Text("Rate this event"),
-                  ),
-            )
-          ]
+            ),
+          ],
         ],
       ),
     );
@@ -610,17 +744,29 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
           children: [
             Icon(icon, size: 16, color: Colors.grey[600]),
             const SizedBox(width: 4),
-            Text(label, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+            Text(
+              label,
+              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+            ),
           ],
         ),
         const SizedBox(height: 2),
-        Text(value, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: Colors.black87)),
+        Text(
+          value,
+          style: const TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 14,
+            color: Colors.black87,
+          ),
+        ),
       ],
     );
   }
 
   Widget _buildReviewCard(dynamic review, String username) {
-    final eventName = review['event'] != null ? review['event']['name'] : 'Unknown Event';
+    final eventName = review['event'] != null
+        ? review['event']['name']
+        : 'Unknown Event';
     final rating = review['rating'] ?? 0.0;
     final reviewText = review['review_text'] ?? '';
 
@@ -650,11 +796,23 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(username, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                    Text(
+                      username,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                      ),
+                    ),
                     const SizedBox(height: 2),
-                    Text("Participant $eventName", 
-                      style: TextStyle(fontSize: 12, color: Colors.grey[400], fontWeight: FontWeight.w500),
-                      maxLines: 1, overflow: TextOverflow.ellipsis,
+                    Text(
+                      "Participant $eventName",
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[400],
+                        fontWeight: FontWeight.w500,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
@@ -665,19 +823,26 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
                 },
                 itemBuilder: (context) => [
                   const PopupMenuItem(value: 'edit', child: Text("Edit")),
-                  const PopupMenuItem(value: 'delete', child: Text("Delete", style: TextStyle(color: Colors.red))),
+                  const PopupMenuItem(
+                    value: 'delete',
+                    child: Text("Delete", style: TextStyle(color: Colors.red)),
+                  ),
                 ],
                 icon: Icon(Icons.more_horiz, color: Colors.grey[300]),
               ),
             ],
           ),
-          
+
           // Review Text
           Expanded(
             child: Center(
               child: Text(
                 reviewText,
-                style: const TextStyle(fontSize: 14, color: Colors.grey, height: 1.5),
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey,
+                  height: 1.5,
+                ),
                 maxLines: 4,
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
@@ -689,16 +854,34 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
           Container(
             padding: const EdgeInsets.only(top: 16),
             decoration: BoxDecoration(
-              border: Border(top: BorderSide(color: Colors.grey[50]!, style: BorderStyle.solid)), // Dashed logic omitted for simplicity
+              border: Border(
+                top: BorderSide(
+                  color: Colors.grey[50]!,
+                  style: BorderStyle.solid,
+                ),
+              ), // Dashed logic omitted for simplicity
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 const Icon(Icons.star, color: Color(0xFFCDFA5D), size: 24),
                 const SizedBox(width: 8),
-                Text("$rating", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 24)),
+                Text(
+                  "$rating",
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 24,
+                  ),
+                ),
                 const SizedBox(width: 4),
-                Text("/5.0 rating", style: TextStyle(color: Colors.grey[400], fontSize: 12, fontWeight: FontWeight.w500)),
+                Text(
+                  "/5.0 rating",
+                  style: TextStyle(
+                    color: Colors.grey[400],
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
               ],
             ),
           ),
