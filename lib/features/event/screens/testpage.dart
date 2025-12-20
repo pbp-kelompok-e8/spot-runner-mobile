@@ -132,13 +132,17 @@ class _EventListPageState extends State<EventListPage> {
                   elevation: 4,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   child: ListTile(
-                    onTap: () {
-                      Navigator.push(
+                    onTap: () async {
+                      final result = await Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (context) => EventDetailPage(eventId: event['id'].toString()),
                         ),
                       );
+                      if (result == true) {
+                        setState(() {
+                        });
+                      }
                     },
                     contentPadding: const EdgeInsets.all(16),
                     title: Text(

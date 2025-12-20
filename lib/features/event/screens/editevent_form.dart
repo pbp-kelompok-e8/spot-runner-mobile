@@ -6,6 +6,8 @@ import 'package:http/http.dart' as http;
 import 'package:spot_runner_mobile/core/widgets/left_drawer.dart';
 import 'package:provider/provider.dart';
 import 'package:pbp_django_auth/pbp_django_auth.dart';
+import 'package:spot_runner_mobile/core/config/api_config.dart'; 
+
 
 class EditEventFormPage extends StatefulWidget {
   final Map<String, dynamic> event;
@@ -259,6 +261,18 @@ class _EditEventFormPageState extends State<EditEventFormPage> {
             padding: const EdgeInsets.all(16.0),
             child: Column(
               children: [
+                InkWell(
+                  onTap: () => Navigator.pop(context),
+                  child: Row(
+                    children: const [
+                      Icon(Icons.arrow_back_ios_new, size: 20),
+                      SizedBox(width: 8),
+                      Text("Back", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+
                 Container(
                   decoration: BoxDecoration(
                     color: Colors.white,
@@ -602,7 +616,7 @@ class _EditEventFormPageState extends State<EditEventFormPage> {
 
                         try {
                           final response = await request.postJson(
-                            'http://localhost:8000/event/edit-flutter/$id/',
+                            ApiConfig.editEventUrl(id),
                             jsonEncode({
                               "name": _eventName,
                               "description": _description,
