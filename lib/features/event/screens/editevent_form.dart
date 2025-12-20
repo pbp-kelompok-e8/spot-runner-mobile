@@ -258,6 +258,18 @@ class _EditEventFormPageState extends State<EditEventFormPage> {
             padding: const EdgeInsets.all(16.0),
             child: Column(
               children: [
+                InkWell(
+                  onTap: () => Navigator.pop(context),
+                  child: Row(
+                    children: const [
+                      Icon(Icons.arrow_back_ios_new, size: 20),
+                      SizedBox(width: 8),
+                      Text("Back", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+                
                 Container(
                   decoration: BoxDecoration(
                     color: Colors.white,

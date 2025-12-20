@@ -1,3 +1,4 @@
+// INI PAGE BUAT TEST DOANG
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -56,13 +57,17 @@ class _EventListPageState extends State<EventListPage> {
                   elevation: 4,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   child: ListTile(
-                    onTap: () {
-                      Navigator.push(
+                    onTap: () async {
+                      final result = await Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (context) => EventDetailPage(eventId: event['id']),
                         ),
                       );
+                      if (result == true) {
+                        setState(() {
+                        });
+                      }
                     },
                     contentPadding: const EdgeInsets.all(16),
                     title: Text(
