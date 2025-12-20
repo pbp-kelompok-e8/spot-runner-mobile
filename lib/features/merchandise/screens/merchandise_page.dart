@@ -132,7 +132,7 @@ class _MerchandisePageState extends State<MerchandisePage> {
         backgroundColor: Theme.of(context).colorScheme.primary,
         iconTheme: const IconThemeData(color: Colors.white),
       ),
-      drawer: LeftDrawer(username: username),
+      drawer: LeftDrawer(),
       body: RefreshIndicator(
         onRefresh: () async {
           await fetchUserCoins();
