@@ -1,9 +1,14 @@
+//lib\features\event\screens\detailevent_page.dart
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'dart:async';
 import 'package:provider/provider.dart';
 import 'package:pbp_django_auth/pbp_django_auth.dart';
 import 'package:spot_runner_mobile/features/event/screens/editevent_form.dart';
+import 'package:spot_runner_mobile/features/review/screens/review_card.dart';
+import 'package:spot_runner_mobile/features/review/screens/review_modal.dart';
+import 'package:spot_runner_mobile/features/review/service/review_service.dart';
+import 'package:spot_runner_mobile/core/models/review_entry.dart';
 import 'dart:convert';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
@@ -21,6 +26,8 @@ class _EventDetailPageState extends State<EventDetailPage> {
   String? _selectedCategory;
   Map<String, dynamic>? _eoData; 
   bool _isEoLoading = true;
+  List<Datum> _reviews = [];
+  bool _isLoadingReviews = true;
   bool _isBookingLoading = false;
 
   @override
@@ -37,11 +44,34 @@ class _EventDetailPageState extends State<EventDetailPage> {
       
       return eventData;
     });
+    _loadReviews();
   }
 
   @override
   void dispose() {
     super.dispose();
+  }
+
+  Future<void> _loadReviews() async {
+    final request = context.read<CookieRequest>();
+    try {
+      final reviewEntry = await ReviewService.getAllReviews(
+        request,
+        eventId: widget.eventId,
+      );
+      
+      if (mounted && reviewEntry != null) {
+        setState(() {
+          _reviews = reviewEntry.data;
+          _isLoadingReviews = false;
+        });
+      }
+    } catch (e) {
+      print("Error loading reviews: $e");
+      if (mounted) {
+        setState(() => _isLoadingReviews = false);
+      }
+    }
   }
 
   Future<Map<String, dynamic>> fetchEventDetail() async {
@@ -192,6 +222,101 @@ class _EventDetailPageState extends State<EventDetailPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
         );
+      }
+    }
+  }
+
+  Future<void> _handleEditReview(Datum review) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => ReviewModal(
+        eventName: review.eventName,
+        eventId: review.eventId,
+        reviewId: review.id,
+        initialRating: review.rating,
+        initialReview: review.reviewText,
+        onSubmit: (rating, reviewText) async {
+          await _submitEditReview(review.id, rating, reviewText);
+        },
+      ),
+    );
+
+    if (result == true) {
+      _loadReviews();
+    }
+  }
+
+  Future<void> _submitEditReview(String reviewId, int rating, String reviewText) async {
+    final request = context.read<CookieRequest>();
+    
+    try {
+      final response = await ReviewService.editReview(
+        request,
+        reviewId: reviewId,
+        rating: rating,
+        reviewText: reviewText,
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(response['message']),
+            backgroundColor: response['success'] ? Colors.green : Colors.red,
+          ),
+        );
+
+        if (response['success']) {
+          Navigator.pop(context, true);
+          _loadReviews();
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Error: $e"),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _handleDeleteReview(String reviewId) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Review'),
+        content: const Text('Are you sure you want to delete this review?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      final request = context.read<CookieRequest>();
+      final response = await ReviewService.deleteReview(request, reviewId);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(response['message']),
+            backgroundColor: response['success'] ? Colors.green : Colors.red,
+          ),
+        );
+
+        if (response['success']) {
+          _loadReviews();
+        }
       }
     }
   }
@@ -471,7 +596,7 @@ class _EventDetailPageState extends State<EventDetailPage> {
 
                       const SizedBox(height: 30),
                       Row(
-                        crossAxisAlignment: CrossAxisAlignment.start, // Align top
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           CircleAvatar(
                             radius: 20, 
@@ -541,21 +666,58 @@ class _EventDetailPageState extends State<EventDetailPage> {
                         ],
                       ),
                       const SizedBox(height: 24),
+                      
+                      // --- REVIEWS SECTION ---
                       const Text("Rating & Reviews",
                           style: TextStyle(
                               fontSize: 18, fontWeight: FontWeight.bold)),
                       const SizedBox(height: 10),
-                      SizedBox(
-                        height: 130,
-                        child: ListView(
-                          scrollDirection: Axis.horizontal,
-                          children: [
-                            _buildReviewCard("Leticia Kutch", 4.75),
-                            _buildReviewCard("John Doe", 5.0),
-                            _buildReviewCard("Jane Smith", 4.0),
-                          ],
+                      
+                      if (_isLoadingReviews)
+                        const Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(20.0),
+                            child: CircularProgressIndicator(),
+                          ),
+                        )
+                      else if (_reviews.isEmpty)
+                        Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(20.0),
+                            child: Text(
+                              'No reviews yet',
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                        )
+                      else
+                        SizedBox(
+                          height: 200,
+                          child: ListView.builder(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: _reviews.length,
+                            itemBuilder: (context, index) {
+                              final review = _reviews[index];
+                              return Container(
+                                width: 280,
+                                margin: const EdgeInsets.only(right: 12),
+                                child: ReviewCard(
+                                  reviewId: review.id,
+                                  runnerName: review.runnerName,
+                                  eventName: review.eventName,
+                                  reviewText: review.reviewText,
+                                  rating: review.rating.toDouble(),
+                                  isOwner: review.isOwner,
+                                  onEdit: () => _handleEditReview(review),
+                                  onDelete: () => _handleDeleteReview(review.id),
+                                ),
+                              );
+                            },
+                          ),
                         ),
-                      ),
                       const SizedBox(height: 40),
                     ],
                   ),
@@ -567,6 +729,7 @@ class _EventDetailPageState extends State<EventDetailPage> {
       ),
     );
   }
+  
   Widget _buildInfoRow(IconData icon, String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
@@ -585,50 +748,6 @@ class _EventDetailPageState extends State<EventDetailPage> {
                         fontSize: 13, fontWeight: FontWeight.bold)),
               ],
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildReviewCard(String name, double rating) {
-    return Container(
-      width: 160,
-      margin: const EdgeInsets.only(right: 10),
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.grey[200]!),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.grey.withOpacity(0.1),
-              blurRadius: 4,
-              offset: const Offset(0, 2)),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(name,
-              style:
-                  const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-          const Text("Participant",
-              style: TextStyle(fontSize: 9, color: Colors.grey)),
-          const SizedBox(height: 6),
-          Text("Lorem ipsum dolor sit amet...",
-              style: TextStyle(fontSize: 10, color: Colors.grey[600]),
-              maxLines: 3,
-              overflow: TextOverflow.ellipsis),
-          const Spacer(),
-          Row(
-            children: [
-              const Icon(Icons.star, color: Colors.greenAccent, size: 14),
-              const SizedBox(width: 4),
-              Text(rating.toString(),
-                  style: const TextStyle(
-                      fontWeight: FontWeight.bold, fontSize: 12)),
-            ],
           ),
         ],
       ),
@@ -757,7 +876,6 @@ class _ImageSliderWidgetState extends State<ImageSliderWidget> {
           ),
         ),
 
-        // Indikator Dots
         if (widget.imageUrls.length > 1)
           Positioned(
             bottom: 0,
@@ -807,7 +925,6 @@ class _ImageSliderWidgetState extends State<ImageSliderWidget> {
   }
 }
 
-// --- WIDGET KHUSUS TIMER ---
 class EventTimerWidget extends StatefulWidget {
   final DateTime targetDate;
   final String? deadlineString;
@@ -880,7 +997,8 @@ class _EventTimerWidgetState extends State<EventTimerWidget> {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.9), borderRadius: BorderRadius.circular(12)),
+          color: Colors.white.withOpacity(0.9), 
+          borderRadius: BorderRadius.circular(12)),
       child: Column(
         children: [
           Text("Registration Closes In",

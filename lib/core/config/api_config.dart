@@ -10,6 +10,16 @@ class ApiConfig {
   static String userProfile(String username) => '$baseUrl/$username/json';
 
   // Merchandise endpoints
+  // Review & Rating endpoints
+  static const String reviewsJson = '$baseUrl/review/api/reviews/';
+  static const String createReview = '$baseUrl/review/create-flutter/';
+
+  static String reviewsByEvent(String eventId) => '$baseUrl/review/api/reviews/?event_id=$eventId';
+  static String eventReviews(String eventId) => '$baseUrl/review/api/reviews/event/$eventId/';
+  static String editReview(String reviewId) => '$baseUrl/review/$reviewId/edit/';
+  static String deleteReview(String reviewId) => '$baseUrl/review/$reviewId/delete/';
+
+}
   static const String merchandiseJson = '$baseUrl/merchandise/json/';
   static const String userCoins = '$baseUrl/merchandise/user-coins/';
   static const String redeemMerchandise = '$baseUrl/merchandise/redemption/json/';

@@ -1,5 +1,11 @@
-// event_entry.dart - PERBAIKAN
-class EventDetail {
+//lib\core\models\event_entry.dart
+import 'dart:convert';
+
+EventEntry eventEntryFromJson(String str) => EventEntry.fromJson(json.decode(str));
+
+String eventEntryToJson(EventEntry data) => json.encode(data.toJson());
+
+class EventEntry {
     String id;
     String name;
     String description;
