@@ -13,6 +13,7 @@ import 'package:spot_runner_mobile/core/models/user_entry.dart';
 import 'package:spot_runner_mobile/core/config/api_config.dart';
 import 'package:spot_runner_mobile/features/auth/screens/profile.dart';
 import 'package:spot_runner_mobile/features/merchandise/screens/merchandise_page.dart';
+import 'package:spot_runner_mobile/core/providers/user_provider.dart';
 
 class LeftDrawer extends StatelessWidget {
   final String username;
@@ -21,6 +22,14 @@ class LeftDrawer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final request = context.watch<CookieRequest>();
+
+    String username = "";
+      try {
+        username = context.watch<UserProvider>().username;
+      } catch (e) {
+        // Fallback jika provider error/belum ada
+        username = "Guest"; 
+      }
 
     return Drawer(
       child: Column(
@@ -156,11 +165,10 @@ class LeftDrawer extends StatelessWidget {
                   leading: const Icon(Icons.account_box),
                   title: const Text('Profile'),
                   onTap: () {
+                    // TODO: Navigate ke Profile
                     Navigator.push(
                       context,
-                      MaterialPageRoute(
-                        builder: (context) => const ProfileScreen(),
-                      ),
+                      MaterialPageRoute(builder: (context) => RunnerProfilePage(username: username)),
                     );
                   },
                 ),
