@@ -7,6 +7,8 @@ import 'package:spot_runner_mobile/core/screens/menu.dart';
 import 'package:intl/intl.dart';
 import 'dart:convert';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:spot_runner_mobile/features/auth/screens/edit_profile.dart'; // Sesuaikan path jika beda
+import 'package:spot_runner_mobile/core/providers/user_provider.dart';
 
 class RunnerProfilePage extends StatefulWidget {
   const RunnerProfilePage({super.key, required this.username});
@@ -19,34 +21,18 @@ class RunnerProfilePage extends StatefulWidget {
 class _RunnerProfilePageState extends State<RunnerProfilePage> {
   Map<String, dynamic>? _profileData;
   bool _isLoading = true;
+  late String _currentUsername;
 
-  // --- COLORS FROM CSS ---
+  // --- COLORS ---
   final Color _primaryBlue = const Color(0xFF1447E6);
   final Color _textDark = const Color(0xFF393938);
   final Color _textGrey = const Color(0xFF777675);
-  final Color _fieldBg = const Color(0xFFFBFBFB);
-  final Color _fieldBorder = const Color(0xFFD7D5D3);
-  final Color _limeGreen = const Color(0xFFCDFA5D);
-  
-  // Status Colors
-  final Color _statusGoingBg = const Color(0xFFEFF6FF);
-  final Color _statusGoingBorder = const Color(0xFF2B7FFF);
-  final Color _statusGoingBadgeBg = const Color(0xFFBEDBFF);
-  final Color _statusGoingBadgeText = const Color(0xFF1C398E);
-
-  final Color _statusFinishedBg = const Color(0xFFF0FDF4);
-  final Color _statusFinishedBorder = const Color(0xFF00C951);
-  final Color _statusFinishedBadgeBg = const Color(0xFFB9F8CF);
-  final Color _statusFinishedBadgeText = const Color(0xFF0D542B);
-
-  final Color _statusCanceledBg = const Color(0xFFFEF2F2);
-  final Color _statusCanceledBorder = const Color(0xFFFB2C36);
-  final Color _statusCanceledBadgeBg = const Color(0xFFFFC9C9);
-  final Color _statusCanceledBadgeText = const Color(0xFF82181A);
+  final Color _limeGreen = const Color(0xFFA0E228); // Warna Tombol Save Web
 
   @override
   void initState() {
     super.initState();
+    _currentUsername = widget.username;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _fetchProfileData();
     });
@@ -60,7 +46,7 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
         baseUrl = "http://localhost:8000";
       }
       
-      final response = await request.get('$baseUrl/${widget.username}/json');
+      final response = await request.get('$baseUrl/$_currentUsername/json');
       
       if (mounted) {
         setState(() {
@@ -83,6 +69,231 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
       }
     }
   }
+
+  // --- MODAL EDIT PROFILE (Mirip Web) ---
+  void _showEditProfileModal(BuildContext context, String currentUsername, String currentLocation) {
+    final GlobalKey<FormState> formKey = GlobalKey<FormState>();
+    final TextEditingController usernameController = TextEditingController(text: currentUsername);
+    // Menggunakan value untuk dropdown
+    String? selectedLocation = currentLocation;
+
+    // Daftar Lokasi (Sesuai models.py)
+    final List<Map<String, String>> locations = [
+      {'value': 'jakarta_barat', 'display': 'Jakarta Barat'},
+      {'value': 'jakarta_timur', 'display': 'Jakarta Timur'},
+      {'value': 'jakarta_utara', 'display': 'Jakarta Utara'},
+      {'value': 'jakarta_selatan', 'display': 'Jakarta Selatan'},
+      {'value': 'jakarta_pusat', 'display': 'Jakarta Pusat'},
+      {'value': 'bekasi', 'display': 'Bekasi'},
+      {'value': 'tangerang', 'display': 'Tangerang'},
+      {'value': 'bogor', 'display': 'Bogor'},
+      {'value': 'depok', 'display': 'Depok'},
+    ];
+
+    // Pastikan lokasi saat ini ada di list, jika tidak default ke null
+    if (!locations.any((loc) => loc['value'] == selectedLocation)) {
+      selectedLocation = null;
+    }
+
+    bool isSaving = false;
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Dialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              backgroundColor: Colors.white,
+              insetPadding: const EdgeInsets.all(20),
+              child: Container(
+                width: double.infinity,
+                constraints: const BoxConstraints(maxWidth: 500),
+                padding: const EdgeInsets.all(24),
+                child: Form(
+                  key: formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Header Modal
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            "Edit Your Profile",
+                            style: TextStyle(
+                              fontSize: 20, 
+                              fontWeight: FontWeight.w600, 
+                              color: Color(0xFF111827)
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () => Navigator.pop(context),
+                            icon: const Icon(Icons.close, color: Colors.grey),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                          )
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+
+                      // Username Input
+                      const Text(
+                        "Username",
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Color(0xFF374151)),
+                      ),
+                      const SizedBox(height: 6),
+                      TextFormField(
+                        controller: usernameController,
+                        decoration: InputDecoration(
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(color: Color(0xFFD1D5DB)),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(color: Color(0xFFD1D5DB)),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(color: _primaryBlue, width: 2),
+                          ),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) return "Username cannot be empty";
+                          return null;
+                        },
+                      ),
+                      
+                      const SizedBox(height: 20),
+
+                      // Location Select (Dropdown)
+                      const Text(
+                        "Base Location",
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Color(0xFF374151)),
+                      ),
+                      const SizedBox(height: 6),
+                      DropdownButtonFormField<String>(
+                        value: selectedLocation,
+                        decoration: InputDecoration(
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(color: Color(0xFFD1D5DB)),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(color: Color(0xFFD1D5DB)),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(color: _primaryBlue, width: 2),
+                          ),
+                        ),
+                        items: locations.map((loc) {
+                          return DropdownMenuItem(
+                            value: loc['value'],
+                            child: Text(loc['display']!),
+                          );
+                        }).toList(),
+                        onChanged: (val) {
+                          setState(() {
+                            selectedLocation = val;
+                          });
+                        },
+                        validator: (val) => val == null ? "Please select a location" : null,
+                      ),
+
+                      const SizedBox(height: 32),
+
+                      // Buttons Row
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          // Cancel Button
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                side: const BorderSide(color: Color(0xFFD1D5DB)),
+                              ),
+                              foregroundColor: const Color(0xFF374151), // Text Gray
+                            ),
+                            child: const Text("Cancel", style: TextStyle(fontWeight: FontWeight.w500)),
+                          ),
+                          const SizedBox(width: 12),
+                          // Save Button (Warna Hijau Stabilo)
+                          ElevatedButton(
+                            onPressed: isSaving ? null : () async {
+                              if (formKey.currentState!.validate()) {
+                                setState(() => isSaving = true);
+                                
+                                final request = context.read<CookieRequest>();
+                                String baseUrl = kIsWeb ? "http://localhost:8000" : "http://10.0.2.2:8000";
+                                
+                                try {
+                                  final response = await request.postJson(
+                                    "$baseUrl/api/edit-profile/",
+                                    jsonEncode({
+                                      "username": usernameController.text,
+                                      "base_location": selectedLocation
+                                    })
+                                  );
+
+                                  if (mounted) {
+                                    Navigator.pop(context); // Tutup modal
+                                    if (response['status'] == 'success') {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(content: Text("Profile updated successfully!"), backgroundColor: Colors.green)
+                                      );
+                                      _fetchProfileData(); // Refresh data halaman
+                                    } else {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(content: Text(response['message'] ?? "Failed to update"), backgroundColor: Colors.red)
+                                      );
+                                    }
+                                  }
+                                } catch (e) {
+                                  if (mounted) {
+                                    Navigator.pop(context);
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red)
+                                    );
+                                  }
+                                }
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: _limeGreen, // #A0E228
+                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              elevation: 0,
+                            ),
+                            child: isSaving 
+                              ? const SizedBox(
+                                  width: 20, height: 20, 
+                                  child: CircularProgressIndicator(color: Colors.black87, strokeWidth: 2)
+                                )
+                              : const Text("Save Changes", style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)),
+                          ),
+                        ],
+                      )
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // --- ACTIONS ---
 
   Future<void> _handleLogout() async {
     final request = context.read<CookieRequest>();
@@ -133,7 +344,6 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
                       labelText: 'Password',
                       errorText: errorMessage,
                       border: const OutlineInputBorder(),
-                      focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: _primaryBlue, width: 2.0)),
                       prefixIcon: const Icon(Icons.lock_outline),
                     ),
                   ),
@@ -181,9 +391,8 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
     );
   }
 
-  // --- Helpers: Formatting ---
+  // --- HELPERS FORMATTING ---
   
-  // 1. Format Tanggal Event (31 Dec 2025)
   String _formatDate(String dateStr) {
     if (dateStr.isEmpty || dateStr == '-' || dateStr == 'Never') return dateStr;
     try {
@@ -195,12 +404,10 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
     }
   }
 
-  // 2. Format Last Login (December 20, 2025 at 04:24 PM)
   String _formatLastLogin(String dateStr) {
     if (dateStr.isEmpty || dateStr == '-' || dateStr == 'Never') return dateStr;
     try {
       final DateTime parsed = DateTime.parse(dateStr);
-      // Pattern: Full Month Day, Year 'at' Hour:Minute AM/PM
       final DateFormat formatter = DateFormat("MMMM d, yyyy 'at' hh:mm a");
       return formatter.format(parsed);
     } catch (e) {
@@ -208,7 +415,6 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
     }
   }
 
-  // 3. Format String (jakarta_selatan -> Jakarta Selatan)
   String _formatString(String? value) {
     if (value == null || value.isEmpty || value == '-') return '-';
     String text = value.replaceAll('_', ' ');
@@ -218,7 +424,7 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
     }).join(' ');
   }
 
-  // ==================== WIDGETS ====================
+  // ==================== WIDGETS UI ====================
 
   Widget _buildField(String label, String value) {
     return Column(
@@ -238,8 +444,8 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
-            color: _fieldBg,
-            border: Border.all(color: _fieldBorder),
+            color: const Color(0xFFFBFBFB),
+            border: Border.all(color: const Color(0xFFD7D5D3)),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Text(
@@ -307,7 +513,6 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Last Login Text (Using specific formatter)
               Padding(
                 padding: const EdgeInsets.only(bottom: 12.0),
                 child: Text(
@@ -323,7 +528,6 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
 
               _buildField("Username", username),
               const SizedBox(height: 20),
-              // Format Location (jakarta_selatan -> Jakarta Selatan)
               _buildField("Location", _formatString(location)),
               const SizedBox(height: 20),
               _buildField("Password", "........"),
@@ -361,7 +565,40 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
                 width: double.infinity,
                 height: 48,
                 child: ElevatedButton(
-                  onPressed: () {}, 
+                  onPressed: () async {
+                    String cleanLocation = (location == 'Not set' || location == '-') ? '' : location;
+
+                    final result = await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => EditProfilePage(
+                          currentUsername: _currentUsername, // Gunakan variabel lokal
+                          currentLocation: cleanLocation,
+                        ),
+                      ),
+                    );
+
+                    // PERBAIKAN LOGIKA UPDATE
+                    if (result != null && result is Map) {
+                      String newName = result['new_username'];
+                      String newLoc = result['new_location'];
+
+                      // 1. Update Global State (Provider)
+                      // Agar Drawer dan halaman lain tahu username sudah ganti
+                      context.read<UserProvider>().setUsername(newName);
+
+                      // 2. Update Local State (UI Profile saat ini)
+                      setState(() {
+                        _currentUsername = newName;
+                        _profileData!['base_location'] = newLoc;
+                        // Update widget.username tidak bisa dilakukan karena final, 
+                        // tapi _currentUsername sudah cukup untuk fetch ulang.
+                      });
+                      
+                      // 3. Refresh data dari server dengan username BARU
+                      _fetchProfileData();
+                    }
+                  },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _primaryBlue,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -430,7 +667,7 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
     );
   }
 
-  Widget _buildEventCard(dynamic record, dynamic event, String status, String eventStatus) {
+  Widget _buildEventCard(dynamic record, dynamic event, String status, String eventStatus, String category, String participantId) {
     Color cardBg;
     Color cardBorder;
     Color badgeBg;
@@ -438,22 +675,22 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
     String statusLabel;
 
     if (status == 'canceled') {
-      cardBg = _statusCanceledBg;
-      cardBorder = _statusCanceledBorder;
-      badgeBg = _statusCanceledBadgeBg;
-      badgeText = _statusCanceledBadgeText;
+      cardBg = const Color(0xFFFEF2F2);
+      cardBorder = const Color(0xFFFB2C36);
+      badgeBg = const Color(0xFFFFC9C9);
+      badgeText = const Color(0xFF82181A);
       statusLabel = "Canceled";
     } else if (status == 'finished') {
-      cardBg = _statusFinishedBg;
-      cardBorder = _statusFinishedBorder;
-      badgeBg = _statusFinishedBadgeBg;
-      badgeText = _statusFinishedBadgeText;
+      cardBg = const Color(0xFFF0FDF4);
+      cardBorder = const Color(0xFF00C951);
+      badgeBg = const Color(0xFFB9F8CF);
+      badgeText = const Color(0xFF0D542B);
       statusLabel = "Finished";
     } else { 
-      cardBg = _statusGoingBg;
-      cardBorder = _statusGoingBorder;
-      badgeBg = _statusGoingBadgeBg;
-      badgeText = _statusGoingBadgeText;
+      cardBg = const Color(0xFFEFF6FF);
+      cardBorder = const Color(0xFF2B7FFF);
+      badgeBg = const Color(0xFFBEDBFF);
+      badgeText = const Color(0xFF1C398E);
       statusLabel = "On Going";
     }
 
@@ -515,7 +752,6 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
             child: Divider(height: 1, color: Color(0xFFD1D5DC)),
           ),
 
-          // SEMUA DATA DALAM SATU KOLOM
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -523,15 +759,14 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
               const SizedBox(height: 12),
               _buildEventDataRow("Location", event['location_display'] ?? '-'),
               const SizedBox(height: 12),
-              _buildEventDataRow("Type", record['category'] ?? '-'),
+              _buildEventDataRow("Type", category),
               const SizedBox(height: 12),
-              _buildEventDataRow("Participant ID", record['participant_id']?.toString() ?? '-'), 
+              _buildEventDataRow("Participant ID", participantId), 
             ],
           ),
 
           const SizedBox(height: 24),
           
-          // Action Buttons
           if (status == 'attending') 
             SizedBox(
               width: double.infinity,
@@ -567,62 +802,102 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
     );
   }
 
+  // --- Cancel Modal Logic ---
   Future<void> _showCancelConfirmation(String? eventId, String? eventName) async {
     if (eventId == null) return;
     
+    _showWebStyleConfirmationDialog(
+      title: "Are you sure you want to cancel?",
+      message: "You'll lose your spot in ${eventName ?? 'this event'}.",
+      confirmText: "Cancel Booking",
+      confirmColor: Colors.red,
+      onConfirm: () => _handleCancelEvent(eventId),
+    );
+  }
+
+  void _showWebStyleConfirmationDialog({
+    required String title,
+    required String message,
+    required String confirmText,
+    required Color confirmColor,
+    required VoidCallback onConfirm,
+  }) {
     showDialog(
       context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          title: const Text(
-            "Are you sure you want to cancel?",
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Color(0xFF111827)),
-            textAlign: TextAlign.center,
-          ),
-          content: Text(
-            "You'll lose your spot in ${eventName ?? 'this event'}.",
-            style: const TextStyle(color: Color(0xFF6B7280), fontSize: 14),
-            textAlign: TextAlign.center,
-          ),
-          actionsPadding: const EdgeInsets.all(16),
-          actions: [
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      _handleCancelEvent(eventId);
-                    },
-                    style: OutlinedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      side: const BorderSide(color: Color(0xFFD1D5DC)),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
-                    child: const Text("Cancel Registration", style: TextStyle(color: Color(0xFF374151), fontWeight: FontWeight.w500)),
-                  ),
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        elevation: 5,
+        backgroundColor: Colors.white,
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Align(
+                alignment: Alignment.topRight,
+                child: GestureDetector(
+                  onTap: () => Navigator.pop(ctx),
+                  child: const Icon(Icons.close, size: 20, color: Colors.grey),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.pop(context),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _limeGreen,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      elevation: 0,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
-                    child: const Text("Stay", style: TextStyle(color: Color(0xFF111827), fontWeight: FontWeight.w600)),
-                  ),
+              ),
+              const SizedBox(height: 8),
+              
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 18, 
+                  fontWeight: FontWeight.bold, 
+                  color: Color(0xFF111827)
                 ),
-              ],
-            )
-          ],
-        );
-      },
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                message,
+                style: const TextStyle(
+                  fontSize: 14, 
+                  color: Color(0xFF6B7280)
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      style: OutlinedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        side: const BorderSide(color: Color(0xFFD1D5DB)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      child: const Text("Cancel", style: TextStyle(color: Color(0xFF374151))),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        onConfirm();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: confirmColor,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        elevation: 0,
+                      ),
+                      child: Text(confirmText, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                ],
+              )
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -635,7 +910,7 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
             ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(response['message']), backgroundColor: Colors.green));
             _fetchProfileData(); 
         } else {
-             if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(response['message'] ?? "Failed to cancel"), backgroundColor: Colors.red));
+              if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(response['message'] ?? "Failed to cancel"), backgroundColor: Colors.red));
         }
       } catch (e) {
         if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
@@ -656,7 +931,14 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
     
     final List reviewList = userData['user_reviews'] ?? []; 
 
-    return Scaffold(
+    return PopScope(
+      canPop: false, // Kita handle pop secara manual
+      onPopInvoked: (didPop) {
+        if (didPop) return;
+        // Saat user tekan back, kirim username terbaru ke halaman sebelumnya (Home)
+        Navigator.pop(context, _currentUsername);
+      },
+    child: Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),
       appBar: AppBar(
         backgroundColor: Colors.white,
@@ -708,7 +990,14 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
             if (attendanceList.isEmpty)
               const Center(child: Padding(padding: EdgeInsets.all(20), child: Text("You haven't joined any events yet.", style: TextStyle(color: Colors.grey))))
             else
-              ...attendanceList.map((record) => _buildEventCard(record, record['event'], record['status'], record['event']['event_status'])),
+              ...attendanceList.map((record) => _buildEventCard(
+                  record, 
+                  record['event'], 
+                  record['status'], 
+                  record['event']['event_status'],
+                  record['category'] ?? '-',
+                  record['participant_id']?.toString() ?? '-'
+              )),
 
             const SizedBox(height: 40),
             
@@ -745,6 +1034,7 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
           ],
         ),
       ),
+    )
     );
   }
 }
