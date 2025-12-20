@@ -10,9 +10,13 @@ import 'package:spot_runner_mobile/features/event/screens/profile_screen.dart' h
 // TODO: Sesuaikan import ini dengan lokasi file model Anda yang sebenarnya
 import 'package:spot_runner_mobile/core/models/event_entry.dart'; 
 import 'package:spot_runner_mobile/core/models/user_entry.dart';
+import 'package:spot_runner_mobile/core/config/api_config.dart';
+import 'package:spot_runner_mobile/features/auth/screens/profile.dart';
+import 'package:spot_runner_mobile/features/merchandise/screens/merchandise_page.dart';
 
 class LeftDrawer extends StatelessWidget {
-  const LeftDrawer({super.key});
+  final String username;
+  const LeftDrawer({super.key, required this.username});
 
   @override
   Widget build(BuildContext context) {
@@ -55,7 +59,9 @@ class LeftDrawer extends StatelessWidget {
                   onTap: () {
                     Navigator.pushReplacement(
                       context,
-                      MaterialPageRoute(builder: (context) => MyHomePage()),
+                      MaterialPageRoute(
+                        builder: (context) => MyHomePage(username: username),
+                      ),
                     );
                   },
                 ),
@@ -162,8 +168,12 @@ class LeftDrawer extends StatelessWidget {
                   leading: const Icon(Icons.shopping_bag_rounded),
                   title: const Text('Merchandise'),
                   onTap: () {
-                    // TODO: Navigate ke Merchandise
-                    Navigator.pop(context);
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const MerchandisePage(),
+                      ),
+                    );
                   },
                 ),
               ],
@@ -181,9 +191,7 @@ class LeftDrawer extends StatelessWidget {
               style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
             ),
             onTap: () async {
-              final response = await request.logout(
-                "http://127.0.0.1:8000/auth/logout/", // Pastikan URL logout benar
-              );
+              final response = await request.logout(ApiConfig.logout);
               String message = response["message"];
               if (context.mounted) {
                 if (response['status']) {

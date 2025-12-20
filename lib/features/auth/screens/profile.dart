@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart';
 import 'package:pbp_django_auth/pbp_django_auth.dart';
 import 'package:provider/provider.dart';
+import 'package:spot_runner_mobile/core/config/api_config.dart';
+import 'package:spot_runner_mobile/core/models/user_entry.dart';
 import 'package:spot_runner_mobile/features/auth/screens/login.dart';
+import 'package:spot_runner_mobile/core/screens/menu.dart'; // For navigation to Home
+import 'package:intl/intl.dart';
 
 class RunnerProfilePage extends StatefulWidget {
-  const RunnerProfilePage({super.key});
+  const RunnerProfilePage({super.key, required this.username});
+  final String username;
 
   @override
   State<RunnerProfilePage> createState() => _RunnerProfilePageState();
@@ -155,7 +161,7 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
             icon: const Icon(Icons.refresh, color: Colors.white),
             onPressed: _fetchProfileData,
           ),
-        ],
+        ),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -193,6 +199,16 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
                           side: const BorderSide(color: Colors.red),
                           minimumSize: const Size(double.infinity, 50),
                         ),
+                      ],
+                    )
+                  : ElevatedButton.icon(
+                      onPressed: () {
+                        // Open review modal
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFCDFA5D),
+                        foregroundColor: Colors.black87,
+                        elevation: 0,
                       ),
 
                       const SizedBox(height: 40),
