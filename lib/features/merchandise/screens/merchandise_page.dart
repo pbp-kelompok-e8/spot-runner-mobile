@@ -50,7 +50,7 @@ class _MerchandisePageState extends State<MerchandisePage> {
   void _startAutoRefresh() {
     _refreshTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
       if (mounted && userType == 'organizer') {
-        debugPrint('Auto refreshing data for organizer...');
+        // debugPrint('Auto refreshing data for organizer...');
         fetchUserCoins();
         setState(() {
           _refreshKey++;
@@ -64,8 +64,7 @@ class _MerchandisePageState extends State<MerchandisePage> {
     try {
       final response = await request.get(ApiConfig.userCoins);
 
-      // Debug: Print response
-      debugPrint('User coins response: $response');
+      // debugPrint('User coins response: $response');
 
       if (mounted) {
         setState(() {
@@ -229,7 +228,7 @@ class _MerchandisePageState extends State<MerchandisePage> {
                             children: [
                               Icon(
                                 Icons.shopping_bag_outlined,
-                                size: 64,
+                                size: 72,
                                 color: Colors.grey[400],
                               ),
                               const SizedBox(height: 16),
@@ -254,7 +253,7 @@ class _MerchandisePageState extends State<MerchandisePage> {
                             crossAxisCount: 2,
                             crossAxisSpacing: 12,
                             mainAxisSpacing: 12,
-                            childAspectRatio: 0.65,
+                            childAspectRatio: 0.88,
                           ),
                       itemCount: snapshot.data!.length,
                       itemBuilder: (context, index) {
@@ -285,77 +284,98 @@ class _MerchandisePageState extends State<MerchandisePage> {
 
   Widget _buildCoinBalanceCard() {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(32),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 10,
-            offset: const Offset(0, 2),
+            color: Colors.black.withOpacity(0.05),
+            spreadRadius: 0,
+            blurRadius: 20,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
+          // Bagian Atas: Ikon Koin dan Info Saldo
           Row(
-            mainAxisAlignment: MainAxisAlignment.start,
             children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-
-                child: Image.asset(
-                  'lib/assets/images/coin-icon.png',
-                  width: 64,
-                  height: 64,
-                  fit: BoxFit.contain,
-                  // Error handling jika gambar tidak ditemukan
-                  errorBuilder: (context, error, stackTrace) {
-                    return Icon(
-                      Icons.monetization_on,
-                      color: Colors.amber.shade700,
-                      size: 64,
-                    );
-                  },
-                ),
+              // Icon Koin
+              Image.asset(
+                'lib/assets/images/coin-icon.png',
+                width: 80,
+                height: 80,
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) {
+                  return Icon(
+                    Icons.monetization_on,
+                    color: Colors.amber.shade400,
+                    size: 80,
+                  );
+                },
               ),
-              const SizedBox(width: 16),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    isLoadingCoins ? 'Loading...' : '$userCoins Coins',
-                    style: const TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
+              const SizedBox(width: 20),
+              // Teks Saldo
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isLoadingCoins ? '...' : '$userCoins Coins',
+                      style: const TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF1A1F26),
+                      ),
                     ),
-                  ),
-                  Text(
-                    userType == 'organizer' ? 'Total Earned' : 'Sport Rewards',
-                    style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-                  ),
-                ],
+                    Text(
+                      userType == 'organizer'
+                          ? 'Total Earned'
+                          : 'Sport Rewards',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.grey.shade800,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          OutlinedButton.icon(
+          const SizedBox(height: 24),
+
+          // Tombol History
+          OutlinedButton(
             onPressed: () {
-              // Navigate to history page
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const HistoryPage()),
               );
             },
-            icon: const Icon(Icons.history),
-            label: const Text('History'),
             style: OutlinedButton.styleFrom(
-              minimumSize: const Size(double.infinity, 44),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
+              minimumSize: const Size(double.infinity, 60),
+              side: BorderSide(color: Colors.blueGrey.shade100, width: 1.2),
+              shape: const StadiumBorder(),
+              foregroundColor: Colors.blueGrey.shade600,
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Text(
+                  'History',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w500),
+                ),
+                const SizedBox(width: 8),
+                Icon(
+                  Icons.history_rounded,
+                  size: 24,
+                  color: Colors.blueGrey.shade300,
+                ),
+              ],
             ),
           ),
         ],
@@ -364,37 +384,51 @@ class _MerchandisePageState extends State<MerchandisePage> {
   }
 
   Widget _buildCategoryFilter() {
+    const Color primaryBlue = Color(0xFF1447E6);
+
     return SizedBox(
-      height: 45,
+      height: 50,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         itemCount: categories.length,
+        padding: const EdgeInsets.symmetric(horizontal: 8),
         itemBuilder: (context, index) {
           final category = categories[index];
           final isSelected = selectedCategory == category['value'];
 
           return Padding(
             padding: const EdgeInsets.only(right: 8),
-            child: FilterChip(
-              label: Text(category['label']!),
-              selected: isSelected,
-              onSelected: (selected) {
-                setState(() {
-                  selectedCategory = category['value']!;
-                });
-              },
-              backgroundColor: Colors.white,
-              selectedColor: Theme.of(context).colorScheme.primary,
-              labelStyle: TextStyle(
-                color: isSelected ? Colors.white : Colors.black87,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            child: Theme(
+              data: Theme.of(context).copyWith(
+                splashColor: Colors.transparent, 
+                highlightColor:
+                    Colors.transparent, 
               ),
-              side: BorderSide(
-                color: isSelected
-                    ? Theme.of(context).colorScheme.primary
-                    : Colors.grey.shade300,
+              child: FilterChip(
+                selected: isSelected,
+                label: Text(category['label']!),
+                onSelected: (bool selected) {
+                  setState(() {
+                    selectedCategory = category['value']!;
+                  });
+                },
+                showCheckmark: false,
+                backgroundColor: Colors.white,
+                selectedColor: primaryBlue,
+                pressElevation: 0,
+                labelStyle: TextStyle(
+                  color: isSelected ? Colors.white : primaryBlue,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                  fontSize: 15,
+                ),
+                shape: StadiumBorder(
+                  side: BorderSide(color: primaryBlue, width: 1.5),
+                ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 10,
+                ),
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             ),
           );
         },
@@ -418,9 +452,9 @@ class _MerchandisePageState extends State<MerchandisePage> {
         icon: const Icon(Icons.add),
         label: const Text('Add New Product'),
         style: ElevatedButton.styleFrom(
-          backgroundColor: Theme.of(context).colorScheme.primary,
+          backgroundColor: Colors.blue,
           foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 14),
+          padding: const EdgeInsets.symmetric(vertical: 18),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),

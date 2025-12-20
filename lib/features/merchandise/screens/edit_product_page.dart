@@ -8,10 +8,7 @@ import 'package:spot_runner_mobile/features/merchandise/models/merchandise_model
 class EditProductPage extends StatefulWidget {
   final Merchandise merchandise;
 
-  const EditProductPage({
-    super.key,
-    required this.merchandise,
-  });
+  const EditProductPage({super.key, required this.merchandise});
 
   @override
   State<EditProductPage> createState() => _EditProductPageState();
@@ -24,7 +21,7 @@ class _EditProductPageState extends State<EditProductPage> {
   late TextEditingController _stockController;
   late TextEditingController _descriptionController;
   late TextEditingController _imageUrlController;
-  
+
   late String _selectedCategory;
   bool _isLoading = false;
 
@@ -41,10 +38,18 @@ class _EditProductPageState extends State<EditProductPage> {
     super.initState();
     // Initialize controllers with existing data
     _nameController = TextEditingController(text: widget.merchandise.name);
-    _priceController = TextEditingController(text: widget.merchandise.priceCoins.toString());
-    _stockController = TextEditingController(text: widget.merchandise.stock.toString());
-    _descriptionController = TextEditingController(text: widget.merchandise.description);
-    _imageUrlController = TextEditingController(text: widget.merchandise.imageUrl);
+    _priceController = TextEditingController(
+      text: widget.merchandise.priceCoins.toString(),
+    );
+    _stockController = TextEditingController(
+      text: widget.merchandise.stock.toString(),
+    );
+    _descriptionController = TextEditingController(
+      text: widget.merchandise.description,
+    );
+    _imageUrlController = TextEditingController(
+      text: widget.merchandise.imageUrl,
+    );
     _selectedCategory = widget.merchandise.category;
   }
 
@@ -106,7 +111,7 @@ class _EditProductPageState extends State<EditProductPage> {
                     icon: const Icon(Icons.close),
                     onPressed: () {
                       Navigator.pop(context); // Close dialog
-                      Navigator.pop(context, true); // Back with result
+                      Navigator.pop(context, true); // Back
                     },
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
@@ -115,17 +120,14 @@ class _EditProductPageState extends State<EditProductPage> {
               ),
               const Icon(
                 Icons.check_circle,
-                color: Colors.green,
+                color: Colors.lightGreen,
                 size: 64,
               ),
               const SizedBox(height: 16),
               const Text(
                 "Product Updated Successfully!",
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 24),
               SizedBox(
@@ -133,12 +135,12 @@ class _EditProductPageState extends State<EditProductPage> {
                 child: ElevatedButton(
                   onPressed: () {
                     Navigator.pop(context); // Close dialog
-                    Navigator.pop(context, true); // Back with result
+                    Navigator.pop(context, true); // Back
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.lightGreen,
+                    backgroundColor: const Color(0xFFBBF451),
                     foregroundColor: Colors.black,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    padding: const EdgeInsets.symmetric(vertical: 18),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
@@ -186,10 +188,7 @@ class _EditProductPageState extends State<EditProductPage> {
       appBar: AppBar(
         title: const Text(
           'Edit Merchandise',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         backgroundColor: Theme.of(context).colorScheme.primary,
         iconTheme: const IconThemeData(color: Colors.white),
@@ -205,18 +204,12 @@ class _EditProductPageState extends State<EditProductPage> {
                 // Header
                 const Text(
                   'Edit Merchandise',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   'Update your merchandise details',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[600],
-                  ),
+                  style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                 ),
                 const SizedBox(height: 24),
 
@@ -338,11 +331,19 @@ class _EditProductPageState extends State<EditProductPage> {
                   children: [
                     Expanded(
                       child: OutlinedButton(
-                        onPressed: _isLoading ? null : () => Navigator.pop(context),
+                        onPressed: _isLoading
+                            ? null
+                            : () => Navigator.pop(context),
                         style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          padding: const EdgeInsets.symmetric(vertical: 20),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
+                          ),
+                          side: BorderSide(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.primary, // Warna outline
+                            width: 1.5, // Ketebalan outline
                           ),
                         ),
                         child: const Text('Cancel'),
@@ -353,9 +354,11 @@ class _EditProductPageState extends State<EditProductPage> {
                       child: ElevatedButton(
                         onPressed: _isLoading ? null : _submitForm,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Theme.of(context).colorScheme.primary,
+                          backgroundColor: Theme.of(
+                            context,
+                          ).colorScheme.primary,
                           foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          padding: const EdgeInsets.symmetric(vertical: 20),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
@@ -366,7 +369,9 @@ class _EditProductPageState extends State<EditProductPage> {
                                 width: 20,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    Colors.white,
+                                  ),
                                 ),
                               )
                             : const Text('Update Product'),
@@ -387,10 +392,7 @@ class _EditProductPageState extends State<EditProductPage> {
       padding: const EdgeInsets.only(bottom: 8),
       child: Text(
         text,
-        style: const TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w500,
-        ),
+        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
       ),
     );
   }

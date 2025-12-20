@@ -111,9 +111,9 @@ class _AddProductPageState extends State<AddProductPage> {
                     Navigator.pop(context); // Back to list
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.lightGreen,
+                    backgroundColor: const Color(0xFFBBF451),
                     foregroundColor: Colors.black,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    padding: const EdgeInsets.symmetric(vertical: 20),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
@@ -311,6 +311,12 @@ class _AddProductPageState extends State<AddProductPage> {
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
+                          ),
+                          side: BorderSide(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.primary, // Warna outline
+                            width: 1.5, // Ketebalan outline
                           ),
                         ),
                         child: const Text('Cancel'),

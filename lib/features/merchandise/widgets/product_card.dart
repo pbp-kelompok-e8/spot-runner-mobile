@@ -17,49 +17,75 @@ class ProductCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: InkWell(
-        onTap: () async {
-          // Navigate to detail page
-          final result = await Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) =>
-                  ProductDetailPage(merchandiseId: merchandise.id),
-            ),
-          );
-
-          // Debug print untuk cek result
-          debugPrint('Result from detail page: $result');
-
-          // Jika ada perubahan (delete/edit), refresh parent
-          if (result != null && onRefresh != null) {
-            debugPrint('Calling onRefresh');
-            onRefresh!();
-          }
-        },
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Product Image
-            _buildProductImage(),
-
-            // Product Info
-            Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildProductInfo(),
-                  const SizedBox(height: 8),
-                  _buildPrice(),
-                ],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () async {
+            final result = await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) =>
+                    ProductDetailPage(merchandiseId: merchandise.id),
               ),
-            ),
-          ],
+            );
+
+            if (result != null && onRefresh != null) {
+              onRefresh!();
+            }
+          },
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildProductImage(),
+              Padding(
+                padding: const EdgeInsets.all(10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(
+                      height: 24,
+                      child: Text(
+                        merchandise.name,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+
+                    SizedBox(
+                      height: 36,
+                      child: Text(
+                        merchandise.description,
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+
+                    _buildPrice(),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -72,38 +98,18 @@ class ProductCard extends StatelessWidget {
           borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
           child: Image.network(
             ImageHelper.getProxiedImageUrl(merchandise.imageUrl),
-            height: 140,
+            height: 130, 
             width: double.infinity,
             fit: BoxFit.cover,
-            loadingBuilder: (context, child, loadingProgress) {
-              if (loadingProgress == null) return child;
-              return Container(
-                height: 140,
-                color: Colors.grey[200],
-                child: Center(
-                  child: CircularProgressIndicator(
-                    value: loadingProgress.expectedTotalBytes != null
-                        ? loadingProgress.cumulativeBytesLoaded /
-                              loadingProgress.expectedTotalBytes!
-                        : null,
-                  ),
-                ),
-              );
-            },
-            errorBuilder: (context, error, stackTrace) {
-              debugPrint('Error loading image: $error');
-              return Container(
-                height: 140,
-                color: Colors.grey[300],
-                child: const Center(
-                  child: Icon(Icons.broken_image, size: 40, color: Colors.grey),
-                ),
-              );
-            },
+            errorBuilder: (context, error, stackTrace) => Container(
+              height: 130,
+              color: Colors.grey[200],
+              child: const Center(
+                child: Icon(Icons.broken_image, color: Colors.grey),
+              ),
+            ),
           ),
         ),
-
-        // Stock badge
         if (!merchandise.available)
           Positioned(
             top: 8,
@@ -112,20 +118,18 @@ class ProductCard extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
                 color: Colors.red,
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(6),
               ),
               child: const Text(
                 'Out of Stock',
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: 10,
+                  fontSize: 9,
                   fontWeight: FontWeight.bold,
                 ),
               ),
             ),
           ),
-
-        // Category badge
         Positioned(
           top: 8,
           left: 8,
@@ -133,13 +137,13 @@ class ProductCard extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
               color: Colors.black.withOpacity(0.6),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(6),
             ),
             child: Text(
               merchandise.categoryDisplay,
               style: const TextStyle(
                 color: Colors.white,
-                fontSize: 10,
+                fontSize: 9,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -149,49 +153,29 @@ class ProductCard extends StatelessWidget {
     );
   }
 
-  Widget _buildProductInfo() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          merchandise.name,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-        ),
-        const SizedBox(height: 4),
-        Text(
-          merchandise.description,
-          style: TextStyle(fontSize: 11, color: Colors.grey[600]),
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-        ),
-        const SizedBox(height: 4),
-        Text(
-          'Stock: ${merchandise.stock}',
-          style: TextStyle(
-            fontSize: 10,
-            color: merchandise.stock < 10 ? Colors.orange : Colors.grey[600],
-            fontWeight: merchandise.stock < 10
-                ? FontWeight.bold
-                : FontWeight.normal,
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildPrice() {
     return Row(
       children: [
-        Icon(Icons.monetization_on, size: 16, color: Colors.amber[700]),
-        const SizedBox(width: 4),
+        Image.asset(
+          'lib/assets/images/coin-icon2.png',
+          width: 24,
+          height: 24,
+          fit: BoxFit.contain,
+          errorBuilder: (context, error, stackTrace) {
+            return Icon(
+              Icons.monetization_on,
+              color: Colors.amber.shade400,
+              size: 24,
+            );
+          },
+        ),
+        const SizedBox(width: 8),
         Text(
           '${merchandise.priceCoins} Coins',
           style: TextStyle(
             fontWeight: FontWeight.bold,
-            fontSize: 13,
-            color: Colors.amber[700],
+            fontSize: 16,
+            color: Colors.amber.shade600,
           ),
         ),
       ],
