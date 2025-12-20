@@ -10,6 +10,7 @@ import 'package:provider/provider.dart';
 import 'package:flutter/material.dart';
 import 'package:spot_runner_mobile/features/event/screens/testpage.dart';
 import 'package:spot_runner_mobile/features/auth/screens/login.dart';
+import 'package:spot_runner_mobile/core/providers/user_provider.dart';
 
 void main() {
   runApp(const MyApp());
@@ -20,11 +21,18 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Provider(
-      create: (_) {
-        CookieRequest request = CookieRequest();
-        return request;
-      },
+    return MultiProvider( // <--- Ganti jadi MultiProvider
+      providers: [
+        Provider(
+          create: (_) {
+            CookieRequest request = CookieRequest();
+            return request;
+          },
+        ),
+        ChangeNotifierProvider( // <--- Tambahkan UserProvider
+          create: (_) => UserProvider(),
+        ),
+      ],
       child: MaterialApp(
         title: 'Spot Runner',
         theme: ThemeData(
@@ -32,7 +40,7 @@ class MyApp extends StatelessWidget {
               .copyWith(secondary: Colors.blueAccent[400]),
         ),
         home: const LoginPage(),
-     ),
+      ),
     );
   }
 }

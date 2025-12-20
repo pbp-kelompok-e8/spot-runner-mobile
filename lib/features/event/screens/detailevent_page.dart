@@ -9,6 +9,8 @@ import 'package:spot_runner_mobile/features/review/screens/review_card.dart';
 import 'package:spot_runner_mobile/features/review/screens/review_modal.dart';
 import 'package:spot_runner_mobile/features/review/service/review_service.dart';
 import 'package:spot_runner_mobile/core/models/review_entry.dart';
+import 'dart:convert';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 class EventDetailPage extends StatefulWidget {
   final String eventId;
@@ -26,6 +28,7 @@ class _EventDetailPageState extends State<EventDetailPage> {
   bool _isEoLoading = true;
   List<Datum> _reviews = [];
   bool _isLoadingReviews = true;
+  bool _isBookingLoading = false;
 
   @override
   void initState() {
@@ -106,7 +109,86 @@ class _EventDetailPageState extends State<EventDetailPage> {
       if (mounted) setState(() => _isEoLoading = false);
     }
   }
+  Future<void> _handleBooking() async {
+    if (_selectedCategory == null) return;
 
+    setState(() {
+      _isBookingLoading = true;
+    });
+
+    final request = context.read<CookieRequest>();
+    // Ambil username dari session
+    final username = request.jsonData['username'];
+    
+    if (username == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Silakan login terlebih dahulu.")),
+        );
+        setState(() => _isBookingLoading = false);
+        return;
+    }
+
+    // Tentukan Base URL (Localhost vs Emulator)
+    String baseUrl = "http://10.0.2.2:8000";
+    if (kIsWeb) {
+      baseUrl = "http://localhost:8000";
+    }
+
+    // URL: /api/participate/<username>/<event_id>/<category>/
+    final url = "$baseUrl/api/participate/$username/${widget.eventId}/$_selectedCategory/";
+
+    try {
+      // Panggil API (POST)
+      final response = await request.post(url, {});
+
+      if (mounted) {
+        if (response['status'] == 'success') {
+          // BERHASIL: Tampilkan pesan & Refresh Data
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(response['message']),
+              backgroundColor: Colors.green,
+            ),
+          );
+          
+          // Refresh detail event agar kuota/status terupdate
+          setState(() {
+            _eventFuture = fetchEventDetail();
+            _selectedCategory = null; // Reset pilihan
+          });
+          
+        } else if (response['status'] == 'warning') {
+          // WARNING: Sudah terdaftar
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(response['message']),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        } else {
+          // ERROR LAIN
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(response['message'] ?? "Booking failed"),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isBookingLoading = false;
+        });
+      }
+    }
+  }
   Future<void> _deleteEvent(String id) async {
     final Uri url = Uri.parse(
       'http://localhost:8000/event/delete-flutter/$id/',
@@ -122,7 +204,7 @@ class _EventDetailPageState extends State<EventDetailPage> {
               content: Text("Event deleted successfully!"),
               backgroundColor: Colors.green,
             ),
-          );
+          );  
           Navigator.pop(context);
         }
       } else {
@@ -488,25 +570,27 @@ class _EventDetailPageState extends State<EventDetailPage> {
                         height: 50,
                         child: ElevatedButton(
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: _selectedCategory != null
-                                ?Color(0xFF1D4ED8)
+                            backgroundColor: _selectedCategory != null && !_isBookingLoading
+                                ? const Color(0xFF1D4ED8)
                                 : Colors.grey[300],
                             foregroundColor: Colors.white,
                             shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12)),
                           ),
-                          onPressed: _selectedCategory == null
+                          // Disable tombol jika kategori belum dipilih ATAU sedang loading
+                          onPressed: (_selectedCategory == null || _isBookingLoading)
                               ? null
-                              : () {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                          content: Text(
-                                              "Booking category: $_selectedCategory"),
-                                          backgroundColor: Colors.green));
-                                },
-                          child: const Text("Book Now",
-                              style: TextStyle(
-                                  fontSize: 16, fontWeight: FontWeight.bold)),
+                              : _handleBooking, // <--- PANGGIL FUNGSI DI SINI
+                              
+                          child: _isBookingLoading
+                              ? const SizedBox(
+                                  height: 24, 
+                                  width: 24, 
+                                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
+                                )
+                              : const Text("Book Now",
+                                  style: TextStyle(
+                                      fontSize: 16, fontWeight: FontWeight.bold)),
                         ),
                       ),
 

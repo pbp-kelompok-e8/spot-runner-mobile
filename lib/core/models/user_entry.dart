@@ -1,80 +1,118 @@
-//Shared Model
+// user_entry.dart - PERBAIKAN
 class UserProfile {
-  final int id;
-  final String username;
-  final String email;
-  final String role;
-  final RunnerDetails? runnerDetails;
-  final OrganizerDetails? organizerDetails;
+    int id;
+    String username;
+    String email;
+    String role;  
+    Details? details;
 
-  UserProfile({
-    required this.id,
-    required this.username,
-    required this.email,
-    required this.role,
-    this.runnerDetails,
-    this.organizerDetails,
-  });
+    UserProfile({
+        required this.id,
+        required this.username,
+        required this.email,
+        required this.role,
+        this.details, // Changed from required to optional
+    });
 
-  factory UserProfile.fromJson(Map<String, dynamic> json) {
-    RunnerDetails? runnerData;
-    OrganizerDetails? organizerData;
-
-    if (json['details'] != null) {
-      if (json['role'] == 'runner') {
-        runnerData = RunnerDetails.fromJson(json['details']);
-      } else if (json['role'] == 'event_organizer') {
-        organizerData = OrganizerDetails.fromJson(json['details']);
+    factory UserProfile.fromJson(Map<String, dynamic> json) {
+      // Handle id yang mungkin string atau null
+      dynamic idValue = json["id"];
+      int parsedId;
+      
+      if (idValue is int) {
+        parsedId = idValue;
+      } else if (idValue is String) {
+        parsedId = int.tryParse(idValue) ?? 0;
+      } else {
+        parsedId = 0;
       }
+
+      return UserProfile(
+        id: parsedId,
+        username: json["username"]?.toString() ?? '',
+        email: json["email"]?.toString() ?? '',
+        role: json["role"]?.toString() ?? '',
+        details: json["details"] != null ? Details.fromJson(json["details"]) : null,
+      );
     }
 
-    return UserProfile(
-      id: json['id'],
-      username: json['username'],
-      email: json['email'],
-      role: json['role'],
-      runnerDetails: runnerData,
-      organizerDetails: organizerData,
-    );
-  }
+    Map<String, dynamic> toJson() => {
+        "id": id,
+        "username": username,
+        "email": email,
+        "role": role,
+        "details": details?.toJson(),
+    };
 }
 
-class RunnerDetails {
-  final String baseLocation;
-  final int coin;
+class Details {
+    String baseLocation;
+    int coin;
+    String? profilePicture;
+    int totalEvents; // Changed from int? to int with default
+    double rating;   // Changed from int? to double with default
 
-  RunnerDetails({required this.baseLocation, required this.coin});
+    Details({
+        required this.baseLocation,
+        required this.coin,
+        this.profilePicture,
+        required this.totalEvents, // Now required
+        required this.rating,      // Now required
+    });
 
-  factory RunnerDetails.fromJson(Map<String, dynamic> json) {
-    return RunnerDetails(
-      baseLocation: json['base_location'] ?? '',
-      coin: json['coin'] ?? 0,
-    );
-  }
-}
+    factory Details.fromJson(Map<String, dynamic> json) {
+      // Handle semua field dengan default value
+      String baseLocation = json["base_location"]?.toString() ?? "";
+      
+      // Handle coin
+      dynamic coinValue = json["coin"];
+      int parsedCoin;
+      if (coinValue is int) {
+        parsedCoin = coinValue;
+      } else if (coinValue is String) {
+        parsedCoin = int.tryParse(coinValue) ?? 0;
+      } else {
+        parsedCoin = 0;
+      }
+      
+      // Handle total_events
+      dynamic totalEventsValue = json["total_events"];
+      int parsedTotalEvents;
+      if (totalEventsValue is int) {
+        parsedTotalEvents = totalEventsValue;
+      } else if (totalEventsValue is String) {
+        parsedTotalEvents = int.tryParse(totalEventsValue) ?? 0;
+      } else {
+        parsedTotalEvents = 0;
+      }
+      
+      // Handle rating (bisa int atau double)
+      dynamic ratingValue = json["rating"];
+      double parsedRating;
+      if (ratingValue is double) {
+        parsedRating = ratingValue;
+      } else if (ratingValue is int) {
+        parsedRating = ratingValue.toDouble();
+      } else if (ratingValue is String) {
+        parsedRating = double.tryParse(ratingValue) ?? 0.0;
+      } else {
+        parsedRating = 0.0;
+      }
+      
+      return Details(
+        baseLocation: baseLocation,
+        coin: parsedCoin,
+        profilePicture: json["profile_picture"]?.toString(),
+        totalEvents: parsedTotalEvents,
+        rating: parsedRating,
+      );
+    }
 
-class OrganizerDetails {
-  final String baseLocation;
-  final String profilePicture;
-  final int totalEvents;
-  final double rating;
-  final int coin;
-
-  OrganizerDetails({
-    required this.baseLocation,
-    required this.profilePicture,
-    required this.totalEvents,
-    required this.rating,
-    required this.coin,
-  });
-
-  factory OrganizerDetails.fromJson(Map<String, dynamic> json) {
-    return OrganizerDetails(
-      baseLocation: json['base_location'] ?? '',
-      profilePicture: json['profile_picture'] ?? '',
-      totalEvents: json['total_events'] ?? 0,
-      rating: (json['rating'] as num?)?.toDouble() ?? 0.0,
-      coin: json['coin'] ?? 0,
-    );
-  }
+    Map<String, dynamic> toJson() => {
+        "base_location": baseLocation,
+        "coin": coin,
+        "profile_picture": profilePicture,
+        "total_events": totalEvents,
+        "rating": rating,
+    };
 }

@@ -131,19 +131,27 @@ class _EventListPageState extends State<EventListPage> {
                   margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   elevation: 4,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  child: Column(
-                    children: [
-                      ListTile(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => EventDetailPage(eventId: event['id'].toString()),
-                            ),
-                          );
-                        },
-                        contentPadding: const EdgeInsets.all(16),
-                        title: Row(
+                  child: ListTile(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => EventDetailPage(eventId: event['id'].toString()),
+                        ),
+                      );
+                    },
+                    contentPadding: const EdgeInsets.all(16),
+                    title: Text(
+                      event['name'],
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                    ),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 8),
+                        Text(event['description'], maxLines: 2, overflow: TextOverflow.ellipsis),
+                        const SizedBox(height: 8),
+                        Row(
                           children: [
                             Expanded(
                               child: Text(
