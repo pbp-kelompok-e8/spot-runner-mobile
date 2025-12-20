@@ -328,6 +328,8 @@ class _EventDetailPageState extends State<EventDetailPage> {
   @override
   Widget build(BuildContext context) {
     final request = context.watch<CookieRequest>();
+    final String userRole = request.jsonData['role'] ?? '';
+    bool isRunner = userRole.toLowerCase() == 'runner';
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -543,7 +545,7 @@ class _EventDetailPageState extends State<EventDetailPage> {
 
                       const SizedBox(height: 24),
                       EventTimerWidget(
-                        targetDate: eventDate,
+                        targetDate: DateTime.parse(event['regist_deadline']),
                         deadlineString: event['regist_deadline'],
                       ),
                       const SizedBox(height: 24),
@@ -629,7 +631,7 @@ class _EventDetailPageState extends State<EventDetailPage> {
                             ),
                           ),
                           // Disable tombol jika kategori belum dipilih ATAU sedang loading
-                          onPressed: (_selectedCategory == null || _isBookingLoading)
+                          onPressed: (_selectedCategory == null || _isBookingLoading || !isRunner)
                               ? null
                               : () {
                                   ScaffoldMessenger.of(context).showSnackBar(

@@ -38,6 +38,7 @@ class _EditEventFormPageState extends State<EditEventFormPage> {
   @override
   void initState() {
     super.initState();
+    print("DEBUG: Data event dari server adalah ->${widget.event['event_categories']}");
     final df = DateFormat('yyyy-MM-dd HH:mm');
 
     final data = widget.event;
@@ -62,6 +63,27 @@ class _EditEventFormPageState extends State<EditEventFormPage> {
 
     if (data['event_categories'] != null) {
       _selectedCategories = List<String>.from(data['event_categories']);
+      if (_selectedCategories.contains("Fun Run")){
+        _selectedCategories.remove("Fun Run");
+        _selectedCategories.add("fun_run");
+      }
+      if (_selectedCategories.contains("5K")){
+        _selectedCategories.remove("5K");
+        _selectedCategories.add("5k");
+      }
+      if (_selectedCategories.contains("10K")){
+        _selectedCategories.remove("10K");
+        _selectedCategories.add("10k");
+      }
+      if (_selectedCategories.contains("Half Marathon")){
+        _selectedCategories.remove("Half Marathon");
+        _selectedCategories.add("half_marathon");
+      }
+      if (_selectedCategories.contains("Full Marathon")){
+        _selectedCategories.remove("Full Marathon");
+        _selectedCategories.add("full_marathon");
+      }
+
     }
 
     _eventDateController.text = df.format(_eventDate);
@@ -624,9 +646,9 @@ class _EditEventFormPageState extends State<EditEventFormPage> {
                               "image1": _image,
                               "image2": _image2,
                               "image3": _image3,
-                              "event_date": _eventDate.toIso8601String(),
+                              "event_date": _eventDate.toLocal().toIso8601String(),
                               "regist_deadline": _registDeadline
-                                  .toIso8601String(),
+                                  .toLocal().toIso8601String(),
                               "contact": _contactPerson,
                               "capacity": _totalParticipants,
                               "coin": _coin,
