@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:pbp_django_auth/pbp_django_auth.dart';
 import 'package:provider/provider.dart';
-import 'package:intl/intl.dart'; 
+import 'package:intl/intl.dart';
 import 'package:spot_runner_mobile/core/widgets/left_drawer.dart';
 import 'package:spot_runner_mobile/core/models/event_entry.dart';
-import 'package:spot_runner_mobile/features/event/screens/detailevent_page.dart'; 
+import 'package:spot_runner_mobile/features/event/screens/detailevent_page.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
 class MyHomePage extends StatefulWidget {
@@ -15,7 +15,7 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  // [TAMBAHAN 1] Controller untuk mengatur scroll
+  // [PERBAIKAN UTAMA] Inisialisasi ScrollController di sini (jangan di dalam build)
   final ScrollController _scrollController = ScrollController();
 
   String _selectedCategory = 'All';
@@ -36,9 +36,10 @@ class _MyHomePageState extends State<MyHomePage> {
   final Color _badgeBg = const Color(0xFFFEF9C2);
   final Color _badgeText = const Color(0xFF894B00);
 
-  // Helper title case
+  // [PERBAIKAN 2] Helper untuk Title Case (Huruf awal kapital)
   String _toTitleCase(String text) {
     if (text.isEmpty) return text;
+    // Ganti underscore dengan spasi, lalu proses per kata
     return text.replaceAll('_', ' ').split(' ').map((word) {
       if (word.isEmpty) return word;
       return "${word[0].toUpperCase()}${word.substring(1).toLowerCase()}";
@@ -66,9 +67,9 @@ class _MyHomePageState extends State<MyHomePage> {
     return listEvents;
   }
 
-  // [TAMBAHAN 2] Dispose controller saat widget dihancurkan untuk mencegah memory leak
   @override
   void dispose() {
+    // Wajib dispose controller untuk mencegah memory leak
     _scrollController.dispose();
     super.dispose();
   }
@@ -114,7 +115,7 @@ class _MyHomePageState extends State<MyHomePage> {
       ),
       drawer: const LeftDrawer(),
       body: SingleChildScrollView(
-        // [TAMBAHAN 3] Pasang controller ke SingleChildScrollView
+        // [PERBAIKAN UTAMA] Pasang controller ke SingleChildScrollView
         controller: _scrollController,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -192,9 +193,13 @@ class _MyHomePageState extends State<MyHomePage> {
                       } else {
                         var events = snapshot.data!;
                         
+                        // [PERBAIKAN 1] Filter Logic yang lebih kuat
                         if (_selectedCategory != 'All') {
                           events = events.where((e) {
+                            // Normalisasi keyword filter: "fun_run" -> "fun run"
                             String filterKeyword = _selectedCategory.toLowerCase().replaceAll('_', ' ');
+                            
+                            // Cek apakah ada kategori yang cocok (case insensitive)
                             return e.eventCategories.any((cat) => 
                               cat.toLowerCase().replaceAll('_', ' ').contains(filterKeyword)
                             );
@@ -205,6 +210,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
                         return ListView.separated(
                           shrinkWrap: true,
+                          // Physics harus NeverScrollable agar tidak konflik dengan SingleChildScrollView
                           physics: const NeverScrollableScrollPhysics(),
                           itemCount: events.length,
                           separatorBuilder: (ctx, index) => const SizedBox(height: 20),
@@ -227,7 +233,7 @@ class _MyHomePageState extends State<MyHomePage> {
   Widget _buildHeroSection() {
     return SizedBox(
       width: double.infinity,
-      height: 340, // Tinggi Hero Section yang kita gunakan sebagai offset
+      height: 340, // Tinggi ini digunakan sebagai target scroll
       child: Stack(
         fit: StackFit.expand,
         children: [
@@ -278,13 +284,16 @@ class _MyHomePageState extends State<MyHomePage> {
                 ),
                 const SizedBox(height: 24),
                 ElevatedButton(
-                  // [TAMBAHAN 4] Fungsi Scroll saat tombol ditekan
+                  // [PERBAIKAN UTAMA] Fungsi Scroll
                   onPressed: () {
-                    _scrollController.animateTo(
-                      340, // Scroll ke offset 340 (tepat di bawah Hero Section)
-                      duration: const Duration(milliseconds: 800),
-                      curve: Curves.easeInOut,
-                    );
+                    // Cek apakah controller sudah terpasang ke widget sebelum scroll
+                    if (_scrollController.hasClients) {
+                      _scrollController.animateTo(
+                        340, // Scroll melewati Hero Section (tinggi 340)
+                        duration: const Duration(milliseconds: 800),
+                        curve: Curves.easeInOut,
+                      );
+                    }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFA0E228),
@@ -311,6 +320,8 @@ class _MyHomePageState extends State<MyHomePage> {
     }
 
     String dateStr = DateFormat('dd MMM yyyy (E)').format(event.eventDate);
+    
+    // [PERBAIKAN 2] Menggunakan helper _toTitleCase
     String typesStr = event.eventCategories.map((e) => _toTitleCase(e)).join(", ");
     if (typesStr.isEmpty) typesStr = "Marathon";
 
