@@ -1,3 +1,4 @@
+//lib\features\event\screens\detailevent_page.dart
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'dart:async';
@@ -6,6 +7,12 @@ import 'package:pbp_django_auth/pbp_django_auth.dart';
 import 'package:spot_runner_mobile/features/event/screens/editevent_form.dart';
 import 'package:spot_runner_mobile/features/event/screens/testpage.dart';
 import 'package:spot_runner_mobile/core/config/api_config.dart'; 
+import 'package:spot_runner_mobile/features/review/screens/review_card.dart';
+import 'package:spot_runner_mobile/features/review/screens/review_modal.dart';
+import 'package:spot_runner_mobile/features/review/service/review_service.dart';
+import 'package:spot_runner_mobile/core/models/review_entry.dart';
+import 'dart:convert';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 class EventDetailPage extends StatefulWidget {
   final String eventId;
@@ -21,6 +28,9 @@ class _EventDetailPageState extends State<EventDetailPage> {
   String? _selectedCategory;
   Map<String, dynamic>? _eoData;
   bool _isEoLoading = true;
+  List<Datum> _reviews = [];
+  bool _isLoadingReviews = true;
+  bool _isBookingLoading = false;
 
   @override
   void initState() {
@@ -36,11 +46,34 @@ class _EventDetailPageState extends State<EventDetailPage> {
 
       return eventData;
     });
+    _loadReviews();
   }
 
   @override
   void dispose() {
     super.dispose();
+  }
+
+  Future<void> _loadReviews() async {
+    final request = context.read<CookieRequest>();
+    try {
+      final reviewEntry = await ReviewService.getAllReviews(
+        request,
+        eventId: widget.eventId,
+      );
+      
+      if (mounted && reviewEntry != null) {
+        setState(() {
+          _reviews = reviewEntry.data;
+          _isLoadingReviews = false;
+        });
+      }
+    } catch (e) {
+      print("Error loading reviews: $e");
+      if (mounted) {
+        setState(() => _isLoadingReviews = false);
+      }
+    }
   }
 
   Future<Map<String, dynamic>> fetchEventDetail() async {
@@ -80,7 +113,86 @@ class _EventDetailPageState extends State<EventDetailPage> {
       if (mounted) setState(() => _isEoLoading = false);
     }
   }
+  Future<void> _handleBooking() async {
+    if (_selectedCategory == null) return;
 
+    setState(() {
+      _isBookingLoading = true;
+    });
+
+    final request = context.read<CookieRequest>();
+    // Ambil username dari session
+    final username = request.jsonData['username'];
+    
+    if (username == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Silakan login terlebih dahulu.")),
+        );
+        setState(() => _isBookingLoading = false);
+        return;
+    }
+
+    // Tentukan Base URL (Localhost vs Emulator)
+    String baseUrl = "http://10.0.2.2:8000";
+    if (kIsWeb) {
+      baseUrl = "http://localhost:8000";
+    }
+
+    // URL: /api/participate/<username>/<event_id>/<category>/
+    final url = "$baseUrl/api/participate/$username/${widget.eventId}/$_selectedCategory/";
+
+    try {
+      // Panggil API (POST)
+      final response = await request.post(url, {});
+
+      if (mounted) {
+        if (response['status'] == 'success') {
+          // BERHASIL: Tampilkan pesan & Refresh Data
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(response['message']),
+              backgroundColor: Colors.green,
+            ),
+          );
+          
+          // Refresh detail event agar kuota/status terupdate
+          setState(() {
+            _eventFuture = fetchEventDetail();
+            _selectedCategory = null; // Reset pilihan
+          });
+          
+        } else if (response['status'] == 'warning') {
+          // WARNING: Sudah terdaftar
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(response['message']),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        } else {
+          // ERROR LAIN
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(response['message'] ?? "Booking failed"),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isBookingLoading = false;
+        });
+      }
+    }
+  }
   Future<void> _deleteEvent(String id) async {
     final Uri url = Uri.parse(
       ApiConfig.deleteEventUrl(id),
@@ -114,6 +226,101 @@ class _EventDetailPageState extends State<EventDetailPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
         );
+      }
+    }
+  }
+
+  Future<void> _handleEditReview(Datum review) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => ReviewModal(
+        eventName: review.eventName,
+        eventId: review.eventId,
+        reviewId: review.id,
+        initialRating: review.rating,
+        initialReview: review.reviewText,
+        onSubmit: (rating, reviewText) async {
+          await _submitEditReview(review.id, rating, reviewText);
+        },
+      ),
+    );
+
+    if (result == true) {
+      _loadReviews();
+    }
+  }
+
+  Future<void> _submitEditReview(String reviewId, int rating, String reviewText) async {
+    final request = context.read<CookieRequest>();
+    
+    try {
+      final response = await ReviewService.editReview(
+        request,
+        reviewId: reviewId,
+        rating: rating,
+        reviewText: reviewText,
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(response['message']),
+            backgroundColor: response['success'] ? Colors.green : Colors.red,
+          ),
+        );
+
+        if (response['success']) {
+          Navigator.pop(context, true);
+          _loadReviews();
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Error: $e"),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _handleDeleteReview(String reviewId) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Review'),
+        content: const Text('Are you sure you want to delete this review?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      final request = context.read<CookieRequest>();
+      final response = await ReviewService.deleteReview(request, reviewId);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(response['message']),
+            backgroundColor: response['success'] ? Colors.green : Colors.red,
+          ),
+        );
+
+        if (response['success']) {
+          _loadReviews();
+        }
       }
     }
   }
@@ -421,7 +628,8 @@ class _EventDetailPageState extends State<EventDetailPage> {
                               borderRadius: BorderRadius.circular(12),
                             ),
                           ),
-                          onPressed: _selectedCategory == null
+                          // Disable tombol jika kategori belum dipilih ATAU sedang loading
+                          onPressed: (_selectedCategory == null || _isBookingLoading)
                               ? null
                               : () {
                                   ScaffoldMessenger.of(context).showSnackBar(
@@ -565,17 +773,52 @@ class _EventDetailPageState extends State<EventDetailPage> {
                         ),
                       ),
                       const SizedBox(height: 10),
-                      SizedBox(
-                        height: 130,
-                        child: ListView(
-                          scrollDirection: Axis.horizontal,
-                          children: [
-                            _buildReviewCard("Leticia Kutch", 4.75),
-                            _buildReviewCard("John Doe", 5.0),
-                            _buildReviewCard("Jane Smith", 4.0),
-                          ],
+                      
+                      if (_isLoadingReviews)
+                        const Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(20.0),
+                            child: CircularProgressIndicator(),
+                          ),
+                        )
+                      else if (_reviews.isEmpty)
+                        Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(20.0),
+                            child: Text(
+                              'No reviews yet',
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                        )
+                      else
+                        SizedBox(
+                          height: 200,
+                          child: ListView.builder(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: _reviews.length,
+                            itemBuilder: (context, index) {
+                              final review = _reviews[index];
+                              return Container(
+                                width: 280,
+                                margin: const EdgeInsets.only(right: 12),
+                                child: ReviewCard(
+                                  reviewId: review.id,
+                                  runnerName: review.runnerName,
+                                  eventName: review.eventName,
+                                  reviewText: review.reviewText,
+                                  rating: review.rating.toDouble(),
+                                  isOwner: review.isOwner,
+                                  onEdit: () => _handleEditReview(review),
+                                  onDelete: () => _handleDeleteReview(review.id),
+                                ),
+                              );
+                            },
+                          ),
                         ),
-                      ),
                       const SizedBox(height: 40),
                     ],
                   ),
@@ -799,7 +1042,6 @@ class _ImageSliderWidgetState extends State<ImageSliderWidget> {
           ),
         ),
 
-        // Indikator Dots
         if (widget.imageUrls.length > 1)
           Positioned(
             bottom: 0,
@@ -846,7 +1088,6 @@ class _ImageSliderWidgetState extends State<ImageSliderWidget> {
   }
 }
 
-// --- WIDGET KHUSUS TIMER ---
 class EventTimerWidget extends StatefulWidget {
   final DateTime targetDate;
   final String? deadlineString;

@@ -1,20 +1,26 @@
+//lib\core\screens\menu.dart
 import 'package:flutter/material.dart';
 // Import drawer widget
 import 'package:spot_runner_mobile/core/widgets/left_drawer.dart';
 // Import the moved ItemCard and ItemHomepage
 import 'package:spot_runner_mobile/core/widgets/card.dart';
+// Import review form (sesuaikan dengan path Anda)
+// import 'package:spot_runner_mobile/review/screens/review_form.dart';
 
 class MyHomePage extends StatelessWidget {
-  MyHomePage({super.key});
+  MyHomePage({super.key, required this.username});
 
   final String nama = "SpotRunner";
   final String npm = "1111";
   final String kelas = "E";
+  final String username;
 
-  // Gabungan semua item dari kedua versi
+  // Gabungan semua item dari kedua versi + Review
   final List<ItemHomepage> items = [
     ItemHomepage("See Football News", Icons.newspaper),
     ItemHomepage("Add News", Icons.add),
+    ItemHomepage("Review Event", Icons.rate_review), // Item baru untuk Review
+    ItemHomepage("See Review", Icons.list),
     ItemHomepage("Logout", Icons.logout),
     ItemHomepage("Home", Icons.home),
     ItemHomepage("Dashboard", Icons.dashboard),
@@ -33,7 +39,7 @@ class MyHomePage extends StatelessWidget {
         backgroundColor: Theme.of(context).colorScheme.primary,
       ),
       // Tambahkan drawer dari versi kedua
-      drawer: const LeftDrawer(),
+      drawer: LeftDrawer(username: username),
       body: SingleChildScrollView(
         // Tambahkan SingleChildScrollView di sini
         child: Padding(
@@ -69,16 +75,13 @@ class MyHomePage extends StatelessWidget {
 
                   // Grid untuk menampilkan semua ItemCard
                   GridView.count(
-                    primary:
-                        false, // Ubah ke false karena sudah ada SingleChildScrollView
+                    primary: false,
                     padding: const EdgeInsets.all(20),
                     crossAxisSpacing: 10,
                     mainAxisSpacing: 10,
                     crossAxisCount: 3,
-                    shrinkWrap:
-                        true, // Penting agar GridView menyesuaikan tinggi
-                    physics:
-                        const NeverScrollableScrollPhysics(), // Disable scroll GridView, biar scroll dari SingleChildScrollView
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
 
                     children: items.map((ItemHomepage item) {
                       return ItemCard(item);
