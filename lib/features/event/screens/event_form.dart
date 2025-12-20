@@ -1,3 +1,4 @@
+//lib\features\event\screens\event_form.dart
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'dart:convert';
@@ -222,6 +223,17 @@ class _EventFormPageState extends State<EventFormPage> {
             padding: const EdgeInsets.all(16.0),
             child: Column(
               children: [
+                InkWell(
+                  onTap: () => Navigator.pop(context),
+                  child: Row(
+                    children: const [
+                      Icon(Icons.arrow_back_ios_new, size: 20),
+                      SizedBox(width: 8),
+                      Text("Back", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
                 Container(
                   decoration: BoxDecoration(
                     color: Colors.white,
@@ -583,12 +595,12 @@ class _EventFormPageState extends State<EventFormPage> {
                                   backgroundColor: Colors.green,
                                 ),
                               );
-                              Navigator.pushReplacement(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const EventListPage(),
-                                ),
-                              );
+                              // Navigator.pushReplacement(
+                              //   context,
+                              //   MaterialPageRoute(
+                              //     builder: (context) => const EventListPage(),
+                              //   ),
+                              // );
                             } else {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(

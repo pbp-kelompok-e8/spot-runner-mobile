@@ -7,7 +7,7 @@ import 'package:spot_runner_mobile/features/event/screens/event_form.dart';
 
 class DashboardScreen extends StatelessWidget {
   final UserProfile? userProfile;
-  final List<EventDetail> events;
+  final List<EventEntry> events;
 
   const DashboardScreen({
     Key? key,
@@ -235,7 +235,7 @@ class DashboardScreen extends StatelessWidget {
 
 // EventCard tetap menggunakan logika yang sama namun dengan penanganan data null yang lebih baik
 class EventCard extends StatelessWidget {
-  final EventDetail event;
+  final EventEntry event;
   const EventCard({Key? key, required this.event}) : super(key: key);
 
   @override

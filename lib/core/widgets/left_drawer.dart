@@ -1,3 +1,4 @@
+import 'dart:convert'; // Diperlukan untuk jsonEncode
 import 'package:flutter/material.dart';
 import 'package:spot_runner_mobile/core/screens/menu.dart';
 import 'package:spot_runner_mobile/features/auth/screens/login.dart';
@@ -6,6 +7,7 @@ import 'package:pbp_django_auth/pbp_django_auth.dart';
 import 'package:provider/provider.dart';
 // import 'package:spot_runner_mobile/features/event/screens/testpage.dart';
 import 'package:spot_runner_mobile/core/providers/user_provider.dart';
+import 'package:spot_runner_mobile/features/event/screens/dashboard_screen.dart';
 
 class LeftDrawer extends StatelessWidget {
   const LeftDrawer({super.key});
@@ -68,7 +70,7 @@ class LeftDrawer extends StatelessWidget {
                   title: const Text('Dashboard'),
                   onTap: () {
                     // TODO: Navigate ke Dashboard
-                    // Navigator.push(context, MaterialPageRoute(builder: (context) => EventListPage() ));
+                    Navigator.push(context, MaterialPageRoute(builder: (context) => DashboardScreen() ));
                   },
                 ),
                 ListTile(

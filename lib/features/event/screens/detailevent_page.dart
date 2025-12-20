@@ -1,9 +1,16 @@
+//lib\features\event\screens\detailevent_page.dart
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'dart:async';
 import 'package:provider/provider.dart';
 import 'package:pbp_django_auth/pbp_django_auth.dart';
 import 'package:spot_runner_mobile/features/event/screens/editevent_form.dart';
+import 'package:spot_runner_mobile/features/event/screens/testpage.dart';
+import 'package:spot_runner_mobile/core/config/api_config.dart'; 
+import 'package:spot_runner_mobile/features/review/screens/review_card.dart';
+import 'package:spot_runner_mobile/features/review/screens/review_modal.dart';
+import 'package:spot_runner_mobile/features/review/service/review_service.dart';
+import 'package:spot_runner_mobile/core/models/review_entry.dart';
 import 'dart:convert';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
@@ -19,24 +26,27 @@ class EventDetailPage extends StatefulWidget {
 class _EventDetailPageState extends State<EventDetailPage> {
   late Future<Map<String, dynamic>> _eventFuture;
   String? _selectedCategory;
-  Map<String, dynamic>? _eoData; 
+  Map<String, dynamic>? _eoData;
   bool _isEoLoading = true;
+  List<Datum> _reviews = [];
+  bool _isLoadingReviews = true;
   bool _isBookingLoading = false;
 
   @override
   void initState() {
     super.initState();
     _eventFuture = fetchEventDetail().then((eventData) {
-      var eoId = eventData['user_eo']; 
+      var eoId = eventData['user_eo'];
       if (eoId is Map) {
         eoId = eoId['pk'] ?? eoId['id'];
       }
       if (eoId != null) {
         fetchEODetail(eoId.toString());
       }
-      
+
       return eventData;
     });
+    _loadReviews();
   }
 
   @override
@@ -44,10 +54,32 @@ class _EventDetailPageState extends State<EventDetailPage> {
     super.dispose();
   }
 
+  Future<void> _loadReviews() async {
+    final request = context.read<CookieRequest>();
+    try {
+      final reviewEntry = await ReviewService.getAllReviews(
+        request,
+        eventId: widget.eventId,
+      );
+      
+      if (mounted && reviewEntry != null) {
+        setState(() {
+          _reviews = reviewEntry.data;
+          _isLoadingReviews = false;
+        });
+      }
+    } catch (e) {
+      print("Error loading reviews: $e");
+      if (mounted) {
+        setState(() => _isLoadingReviews = false);
+      }
+    }
+  }
+
   Future<Map<String, dynamic>> fetchEventDetail() async {
     final request = context.read<CookieRequest>();
     final response = await request.get(
-      'http://localhost:8000/event/json/${widget.eventId}/',
+      ApiConfig.eventDetail(widget.eventId),
     );
 
     if (response is List) {
@@ -59,7 +91,9 @@ class _EventDetailPageState extends State<EventDetailPage> {
   Future<void> fetchEODetail(String eoId) async {
     final request = context.read<CookieRequest>();
     try {
-      final response = await request.get('http://localhost:8000/event-organizer/json/'); 
+      final response = await request.get(
+        'http://localhost:8000/event-organizer/json/',
+      );
       if (response['status'] == 'success') {
         List<dynamic> organizers = response['data'];
         var foundEO = organizers.firstWhere(
@@ -161,21 +195,21 @@ class _EventDetailPageState extends State<EventDetailPage> {
   }
   Future<void> _deleteEvent(String id) async {
     final Uri url = Uri.parse(
-      'http://localhost:8000/event/delete-flutter/$id/',
+      ApiConfig.deleteEventUrl(id),
     );
     final request = context.read<CookieRequest>();
     try {
       final response = await request.post(url.toString(), {});
-      if (response['status'] == 'success' ||
-          response['message'] == 'success') {
+      if (response['status'] == 'success' || response['message'] == 'success') {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text("Event deleted successfully!"),
               backgroundColor: Colors.green,
             ),
-          );  
-          Navigator.pop(context);
+          );
+            Navigator.pop(context, true
+          );
         }
       } else {
         if (mounted) {
@@ -192,6 +226,101 @@ class _EventDetailPageState extends State<EventDetailPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
         );
+      }
+    }
+  }
+
+  Future<void> _handleEditReview(Datum review) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => ReviewModal(
+        eventName: review.eventName,
+        eventId: review.eventId,
+        reviewId: review.id,
+        initialRating: review.rating,
+        initialReview: review.reviewText,
+        onSubmit: (rating, reviewText) async {
+          await _submitEditReview(review.id, rating, reviewText);
+        },
+      ),
+    );
+
+    if (result == true) {
+      _loadReviews();
+    }
+  }
+
+  Future<void> _submitEditReview(String reviewId, int rating, String reviewText) async {
+    final request = context.read<CookieRequest>();
+    
+    try {
+      final response = await ReviewService.editReview(
+        request,
+        reviewId: reviewId,
+        rating: rating,
+        reviewText: reviewText,
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(response['message']),
+            backgroundColor: response['success'] ? Colors.green : Colors.red,
+          ),
+        );
+
+        if (response['success']) {
+          Navigator.pop(context, true);
+          _loadReviews();
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Error: $e"),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _handleDeleteReview(String reviewId) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Review'),
+        content: const Text('Are you sure you want to delete this review?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      final request = context.read<CookieRequest>();
+      final response = await ReviewService.deleteReview(request, reviewId);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(response['message']),
+            backgroundColor: response['success'] ? Colors.green : Colors.red,
+          ),
+        );
+
+        if (response['success']) {
+          _loadReviews();
+        }
       }
     }
   }
@@ -287,8 +416,10 @@ class _EventDetailPageState extends State<EventDetailPage> {
                     icon: const Icon(Icons.arrow_back, color: Colors.black),
                     onPressed: () => Navigator.pop(context),
                   ),
-                  title:
-                      Text(title, style: const TextStyle(color: Colors.black)),
+                  title: Text(
+                    title,
+                    style: const TextStyle(color: Colors.black),
+                  ),
                   backgroundColor: Colors.white,
                   elevation: 1,
                 ),
@@ -315,24 +446,31 @@ class _EventDetailPageState extends State<EventDetailPage> {
                           children: [
                             Expanded(
                               child: OutlinedButton.icon(
-                                icon: const Icon(Icons.edit, size: 16, color: Color(0xFF1D4ED8),),
-                                label: const Text("Edit",
-                                    style: TextStyle(color: Color(0xFF1D4ED8))),
-                              style: OutlinedButton.styleFrom(
-                                side: const BorderSide(
+                                icon: const Icon(
+                                  Icons.edit,
+                                  size: 16,
                                   color: Color(0xFF1D4ED8),
-                                  width: 1.5,
                                 ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(20),
+                                label: const Text(
+                                  "Edit",
+                                  style: TextStyle(color: Color(0xFF1D4ED8)),
                                 ),
-                              ),
+                                style: OutlinedButton.styleFrom(
+                                  side: const BorderSide(
+                                    color: Color(0xFF1D4ED8),
+                                    width: 1.5,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                ),
                                 onPressed: () async {
                                   bool? result = await Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                        builder: (context) =>
-                                            EditEventFormPage(event: event)),
+                                      builder: (context) =>
+                                          EditEventFormPage(event: event),
+                                    ),
                                   );
                                   if (result == true) {
                                     setState(() {
@@ -345,12 +483,18 @@ class _EventDetailPageState extends State<EventDetailPage> {
                             const SizedBox(width: 10),
                             Expanded(
                               child: ElevatedButton.icon(
-                                icon: const Icon(Icons.delete,
-                                    size: 16, color: Colors.white),
-                                label: const Text("Delete",
-                                    style: TextStyle(color: Colors.white)),
+                                icon: const Icon(
+                                  Icons.delete,
+                                  size: 16,
+                                  color: Colors.white,
+                                ),
+                                label: const Text(
+                                  "Delete",
+                                  style: TextStyle(color: Colors.white),
+                                ),
                                 style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.red),
+                                  backgroundColor: Colors.red,
+                                ),
                                 onPressed: () => _showDeleteDialog(context),
                               ),
                             ),
@@ -358,25 +502,44 @@ class _EventDetailPageState extends State<EventDetailPage> {
                         ),
                       if (isOwner) const SizedBox(height: 24),
 
-                      const Text("About This Event",
-                          style: TextStyle(
-                              fontSize: 18, fontWeight: FontWeight.bold)),
+                      const Text(
+                        "About This Event",
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                       const SizedBox(height: 12),
-                      _buildInfoRow(Icons.people_outline, "Participants",
-                          "$totalParticipants/$capacity"),
-                      _buildInfoRow(Icons.calendar_today_outlined, "Date",
-                          DateFormat('dd MMM yyyy').format(eventDate)),
-                      _buildInfoRow(Icons.location_on_outlined, "Location",
-                          location.replaceAll("_", " ")),
-                      _buildInfoRow(Icons.run_circle_outlined, "Type",
-                          categories.join(", ").replaceAll("_", " ")),
+                      _buildInfoRow(
+                        Icons.people_outline,
+                        "Participants",
+                        "$totalParticipants/$capacity",
+                      ),
+                      _buildInfoRow(
+                        Icons.calendar_today_outlined,
+                        "Date",
+                        DateFormat('dd MMM yyyy').format(eventDate),
+                      ),
+                      _buildInfoRow(
+                        Icons.location_on_outlined,
+                        "Location",
+                        location.replaceAll("_", " "),
+                      ),
+                      _buildInfoRow(
+                        Icons.run_circle_outlined,
+                        "Type",
+                        categories.join(", ").replaceAll("_", " "),
+                      ),
 
                       const SizedBox(height: 24),
-                      Text(description,
-                          style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey[700],
-                              height: 1.5)),
+                      Text(
+                        description,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[700],
+                          height: 1.5,
+                        ),
+                      ),
 
                       const SizedBox(height: 24),
                       EventTimerWidget(
@@ -384,9 +547,13 @@ class _EventDetailPageState extends State<EventDetailPage> {
                         deadlineString: event['regist_deadline'],
                       ),
                       const SizedBox(height: 24),
-                      const Text("Select Category",
-                          style: TextStyle(
-                              fontSize: 18, fontWeight: FontWeight.bold)),
+                      const Text(
+                        "Select Category",
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                       const SizedBox(height: 8),
                       ...categories.map((cat) {
                         String categoryName = cat.toString();
@@ -396,10 +563,11 @@ class _EventDetailPageState extends State<EventDetailPage> {
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10),
                             side: BorderSide(
-                                color: isSelected
-                                    ? Color(0xFF1D4ED8)
-                                    : Colors.grey[300]!,
-                                width: isSelected ? 2 : 1),
+                              color: isSelected
+                                  ? Color(0xFF1D4ED8)
+                                  : Colors.grey[300]!,
+                              width: isSelected ? 2 : 1,
+                            ),
                           ),
                           margin: const EdgeInsets.only(bottom: 8),
                           child: InkWell(
@@ -414,23 +582,30 @@ class _EventDetailPageState extends State<EventDetailPage> {
                             borderRadius: BorderRadius.circular(10),
                             child: Padding(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 12),
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
                               child: Row(
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceBetween,
                                 children: [
                                   Text(
-                                      categoryName
-                                          .toUpperCase()
-                                          .replaceAll("_", " "),
-                                      style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          color: isSelected
-                                              ? Color(0xFF1D4ED8)
-                                              : Colors.black)),
+                                    categoryName.toUpperCase().replaceAll(
+                                      "_",
+                                      " ",
+                                    ),
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: isSelected
+                                          ? Color(0xFF1D4ED8)
+                                          : Colors.black,
+                                    ),
+                                  ),
                                   if (isSelected)
-                                    const Icon(Icons.check_circle,
-                                        color: Color(0xFF1D4ED8))
+                                    const Icon(
+                                      Icons.check_circle,
+                                      color: Color(0xFF1D4ED8),
+                                    ),
                                 ],
                               ),
                             ),
@@ -445,42 +620,58 @@ class _EventDetailPageState extends State<EventDetailPage> {
                         height: 50,
                         child: ElevatedButton(
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: _selectedCategory != null && !_isBookingLoading
-                                ? const Color(0xFF1D4ED8)
+                            backgroundColor: _selectedCategory != null
+                                ? Color(0xFF1D4ED8)
                                 : Colors.grey[300],
                             foregroundColor: Colors.white,
                             shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12)),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
                           // Disable tombol jika kategori belum dipilih ATAU sedang loading
                           onPressed: (_selectedCategory == null || _isBookingLoading)
                               ? null
-                              : _handleBooking, // <--- PANGGIL FUNGSI DI SINI
-                              
-                          child: _isBookingLoading
-                              ? const SizedBox(
-                                  height: 24, 
-                                  width: 24, 
-                                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
-                                )
-                              : const Text("Book Now",
-                                  style: TextStyle(
-                                      fontSize: 16, fontWeight: FontWeight.bold)),
+                              : () {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        "Booking category: $_selectedCategory",
+                                      ),
+                                      backgroundColor: Colors.green,
+                                    ),
+                                  );
+                                },
+                          child: const Text(
+                            "Book Now",
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
                       ),
 
                       const SizedBox(height: 30),
                       Row(
-                        crossAxisAlignment: CrossAxisAlignment.start, // Align top
+                        crossAxisAlignment:
+                            CrossAxisAlignment.start, // Align top
                         children: [
                           CircleAvatar(
-                            radius: 20, 
+                            radius: 20,
                             backgroundColor: Colors.green[100],
-                            backgroundImage: (_eoData != null && _eoData!['profile_picture'] != null) 
-                                ? NetworkImage(_eoData!['profile_picture']) 
+                            backgroundImage:
+                                (_eoData != null &&
+                                    _eoData!['profile_picture'] != null)
+                                ? NetworkImage(_eoData!['profile_picture'])
                                 : null,
-                            child: (_eoData == null || _eoData!['profile_picture'] == null)
-                                ? const Icon(Icons.person, color: Colors.green, size: 20)
+                            child:
+                                (_eoData == null ||
+                                    _eoData!['profile_picture'] == null)
+                                ? const Icon(
+                                    Icons.person,
+                                    color: Colors.green,
+                                    size: 20,
+                                  )
                                 : null,
                           ),
                           const SizedBox(width: 12),
@@ -489,42 +680,72 @@ class _EventDetailPageState extends State<EventDetailPage> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 const Text(
-                                  "Organized By", 
-                                  style: TextStyle(fontSize: 11, color: Colors.grey)
+                                  "Organized By",
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.grey,
+                                  ),
                                 ),
                                 Text(
                                   organizerName,
-                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
                                 ),
-                                
+
                                 const SizedBox(height: 4),
                                 if (_isEoLoading)
                                   const SizedBox(
-                                    height: 10, 
-                                    width: 10, 
-                                    child: CircularProgressIndicator(strokeWidth: 2)
+                                    height: 10,
+                                    width: 10,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
                                   )
                                 else if (_eoData != null)
                                   Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Row(
                                         children: [
-                                          const Icon(Icons.location_city, size: 12, color: Colors.grey),
+                                          const Icon(
+                                            Icons.location_city,
+                                            size: 12,
+                                            color: Colors.grey,
+                                          ),
                                           const SizedBox(width: 4),
                                           Text(
-                                            _eoData!['base_location'][0].toString()[0].toUpperCase() + _eoData!['base_location'].toString().substring(1).replaceAll("_", " ") ?? '-', 
-                                            style: const TextStyle(fontSize: 11, color: Colors.black87)
+                                            _eoData!['base_location'][0]
+                                                        .toString()[0]
+                                                        .toUpperCase() +
+                                                    _eoData!['base_location']
+                                                        .toString()
+                                                        .substring(1)
+                                                        .replaceAll("_", " ") ??
+                                                '-',
+                                            style: const TextStyle(
+                                              fontSize: 11,
+                                              color: Colors.black87,
+                                            ),
                                           ),
                                         ],
                                       ),
                                       Row(
                                         children: [
-                                          const Icon(Icons.event_available, size: 12, color: Colors.grey),
+                                          const Icon(
+                                            Icons.event_available,
+                                            size: 12,
+                                            color: Colors.grey,
+                                          ),
                                           const SizedBox(width: 4),
                                           Text(
-                                            "${_eoData!['total_events']} Events hosted", 
-                                            style: const TextStyle(fontSize: 11, color: Colors.black87)
+                                            "${_eoData!['total_events']} Events hosted",
+                                            style: const TextStyle(
+                                              fontSize: 11,
+                                              color: Colors.black87,
+                                            ),
                                           ),
                                         ],
                                       ),
@@ -532,8 +753,11 @@ class _EventDetailPageState extends State<EventDetailPage> {
                                   )
                                 else
                                   const Text(
-                                    "Detail EO tidak ditemukan", 
-                                    style: TextStyle(fontSize: 10, color: Colors.red)
+                                    "Detail EO tidak ditemukan",
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      color: Colors.red,
+                                    ),
                                   ),
                               ],
                             ),
@@ -541,21 +765,60 @@ class _EventDetailPageState extends State<EventDetailPage> {
                         ],
                       ),
                       const SizedBox(height: 24),
-                      const Text("Rating & Reviews",
-                          style: TextStyle(
-                              fontSize: 18, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 10),
-                      SizedBox(
-                        height: 130,
-                        child: ListView(
-                          scrollDirection: Axis.horizontal,
-                          children: [
-                            _buildReviewCard("Leticia Kutch", 4.75),
-                            _buildReviewCard("John Doe", 5.0),
-                            _buildReviewCard("Jane Smith", 4.0),
-                          ],
+                      const Text(
+                        "Rating & Reviews",
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
+                      const SizedBox(height: 10),
+                      
+                      if (_isLoadingReviews)
+                        const Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(20.0),
+                            child: CircularProgressIndicator(),
+                          ),
+                        )
+                      else if (_reviews.isEmpty)
+                        Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(20.0),
+                            child: Text(
+                              'No reviews yet',
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                        )
+                      else
+                        SizedBox(
+                          height: 200,
+                          child: ListView.builder(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: _reviews.length,
+                            itemBuilder: (context, index) {
+                              final review = _reviews[index];
+                              return Container(
+                                width: 280,
+                                margin: const EdgeInsets.only(right: 12),
+                                child: ReviewCard(
+                                  reviewId: review.id,
+                                  runnerName: review.runnerName,
+                                  eventName: review.eventName,
+                                  reviewText: review.reviewText,
+                                  rating: review.rating.toDouble(),
+                                  isOwner: review.isOwner,
+                                  onEdit: () => _handleEditReview(review),
+                                  onDelete: () => _handleDeleteReview(review.id),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
                       const SizedBox(height: 40),
                     ],
                   ),
@@ -567,6 +830,7 @@ class _EventDetailPageState extends State<EventDetailPage> {
       ),
     );
   }
+
   Widget _buildInfoRow(IconData icon, String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
@@ -578,11 +842,17 @@ class _EventDetailPageState extends State<EventDetailPage> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(label,
-                    style: TextStyle(fontSize: 13, color: Colors.grey[600])),
-                Text(value,
-                    style: const TextStyle(
-                        fontSize: 13, fontWeight: FontWeight.bold)),
+                Text(
+                  label,
+                  style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                ),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ],
             ),
           ),
@@ -602,32 +872,42 @@ class _EventDetailPageState extends State<EventDetailPage> {
         border: Border.all(color: Colors.grey[200]!),
         boxShadow: [
           BoxShadow(
-              color: Colors.grey.withOpacity(0.1),
-              blurRadius: 4,
-              offset: const Offset(0, 2)),
+            color: Colors.grey.withOpacity(0.1),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(name,
-              style:
-                  const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-          const Text("Participant",
-              style: TextStyle(fontSize: 9, color: Colors.grey)),
+          Text(
+            name,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+          ),
+          const Text(
+            "Participant",
+            style: TextStyle(fontSize: 9, color: Colors.grey),
+          ),
           const SizedBox(height: 6),
-          Text("Lorem ipsum dolor sit amet...",
-              style: TextStyle(fontSize: 10, color: Colors.grey[600]),
-              maxLines: 3,
-              overflow: TextOverflow.ellipsis),
+          Text(
+            "Lorem ipsum dolor sit amet...",
+            style: TextStyle(fontSize: 10, color: Colors.grey[600]),
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+          ),
           const Spacer(),
           Row(
             children: [
               const Icon(Icons.star, color: Colors.greenAccent, size: 14),
               const SizedBox(width: 4),
-              Text(rating.toString(),
-                  style: const TextStyle(
-                      fontWeight: FontWeight.bold, fontSize: 12)),
+              Text(
+                rating.toString(),
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
+              ),
             ],
           ),
         ],
@@ -639,18 +919,21 @@ class _EventDetailPageState extends State<EventDetailPage> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text("Delete this Event?",
-            style: TextStyle(fontSize: 16)),
+        title: const Text("Delete this Event?", style: TextStyle(fontSize: 16)),
         content: const Text(
-            "Are you sure you want to delete this event? This action cannot be undone.",
-            style: TextStyle(fontSize: 13)),
+          "Are you sure you want to delete this event? This action cannot be undone.",
+          style: TextStyle(fontSize: 13),
+        ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text("Cancel")),
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Cancel"),
+          ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red, foregroundColor: Colors.white),
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
             onPressed: () {
               Navigator.pop(ctx);
               _deleteEvent(widget.eventId);
@@ -735,8 +1018,10 @@ class _ImageSliderWidgetState extends State<ImageSliderWidget> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(Icons.broken_image, size: 50, color: Colors.grey),
-                      Text("Gagal memuat",
-                          style: TextStyle(color: Colors.grey)),
+                      Text(
+                        "Failed to load image",
+                        style: TextStyle(color: Colors.grey),
+                      ),
                     ],
                   ),
                 ),
@@ -757,7 +1042,6 @@ class _ImageSliderWidgetState extends State<ImageSliderWidget> {
           ),
         ),
 
-        // Indikator Dots
         if (widget.imageUrls.length > 1)
           Positioned(
             bottom: 0,
@@ -768,10 +1052,7 @@ class _ImageSliderWidgetState extends State<ImageSliderWidget> {
                 gradient: LinearGradient(
                   begin: Alignment.bottomCenter,
                   end: Alignment.topCenter,
-                  colors: [
-                    Colors.black.withOpacity(0.7),
-                    Colors.transparent
-                  ],
+                  colors: [Colors.black.withOpacity(0.7), Colors.transparent],
                 ),
               ),
               padding: const EdgeInsets.symmetric(vertical: 15),
@@ -807,7 +1088,6 @@ class _ImageSliderWidgetState extends State<ImageSliderWidget> {
   }
 }
 
-// --- WIDGET KHUSUS TIMER ---
 class EventTimerWidget extends StatefulWidget {
   final DateTime targetDate;
   final String? deadlineString;
@@ -860,11 +1140,11 @@ class _EventTimerWidgetState extends State<EventTimerWidget> {
       ),
       child: Column(
         children: [
-          Text(value,
-              style:
-                  const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-          Text(label,
-              style: const TextStyle(fontSize: 10, color: Colors.grey)),
+          Text(
+            value,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          ),
+          Text(label, style: const TextStyle(fontSize: 10, color: Colors.grey)),
         ],
       ),
     );
@@ -880,12 +1160,15 @@ class _EventTimerWidgetState extends State<EventTimerWidget> {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.9), borderRadius: BorderRadius.circular(12)),
+        color: Colors.white.withOpacity(0.9),
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: Column(
         children: [
-          Text("Registration Closes In",
-              style: TextStyle(
-                  fontWeight: FontWeight.bold, color: Colors.black)),
+          Text(
+            "Registration Closes In",
+            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
+          ),
           const SizedBox(height: 8),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -899,8 +1182,8 @@ class _EventTimerWidgetState extends State<EventTimerWidget> {
           ),
           const SizedBox(height: 8),
           Text(
-              "Deadline: ${widget.deadlineString != null ? DateFormat('dd MMM, HH:mm').format(DateTime.parse(widget.deadlineString!)) : '-'}",
-              style: TextStyle(fontSize: 12, color: Colors.black),
+            "Deadline: ${widget.deadlineString != null ? DateFormat('dd MMM, HH:mm').format(DateTime.parse(widget.deadlineString!)) : '-'}",
+            style: TextStyle(fontSize: 12, color: Colors.black),
           ),
         ],
       ),

@@ -1,5 +1,11 @@
-// event_entry.dart - PERBAIKAN
-class EventDetail {
+//lib\core\models\event_entry.dart
+import 'dart:convert';
+
+EventEntry eventEntryFromJson(String str) => EventEntry.fromJson(json.decode(str));
+
+String eventEntryToJson(EventEntry data) => json.encode(data.toJson());
+
+class EventEntry {
     String id;
     String name;
     String description;
@@ -18,7 +24,7 @@ class EventDetail {
     UserEo userEo;
     List<String> eventCategories;
 
-    EventDetail({
+    EventEntry({
         required this.id,
         required this.name,
         required this.description,
@@ -38,7 +44,7 @@ class EventDetail {
         required this.eventCategories,
     });
 
-    factory EventDetail.fromJson(Map<String, dynamic> json) {
+    factory EventEntry.fromJson(Map<String, dynamic> json) {
       // Helper function untuk parse datetime
       DateTime parseDateTime(dynamic dateStr) {
         if (dateStr == null) return DateTime.now();
@@ -73,7 +79,7 @@ class EventDetail {
       // Parse user_eo dengan default values
       Map<String, dynamic> userEoJson = json["user_eo"] is Map ? Map<String, dynamic>.from(json["user_eo"]) : {};
       
-      return EventDetail(
+      return EventEntry(
         id: json["id"]?.toString() ?? '0',
         name: json["name"]?.toString() ?? '',
         description: json["description"]?.toString() ?? '',
