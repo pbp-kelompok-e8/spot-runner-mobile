@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:pbp_django_auth/pbp_django_auth.dart';
 import 'package:provider/provider.dart';
 import 'package:spot_runner_mobile/features/auth/screens/register.dart';
+import 'package:spot_runner_mobile/core/models/user_entry.dart';
+import 'package:spot_runner_mobile/core/providers/user_provider.dart';
 
 void main() {
   runApp(const LoginApp());

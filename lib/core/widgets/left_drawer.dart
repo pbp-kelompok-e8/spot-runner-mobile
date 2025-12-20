@@ -1,10 +1,17 @@
+import 'dart:convert'; // Diperlukan untuk jsonEncode
 import 'package:flutter/material.dart';
-import 'package:spot_runner_mobile/core/config/api_config.dart';
-import 'package:spot_runner_mobile/core/screens/menu.dart';
-import 'package:spot_runner_mobile/features/auth/screens/login.dart';
-import 'package:spot_runner_mobile/features/auth/screens/profile.dart';
 import 'package:pbp_django_auth/pbp_django_auth.dart';
 import 'package:provider/provider.dart';
+import 'package:spot_runner_mobile/core/screens/menu.dart';
+import 'package:spot_runner_mobile/features/auth/screens/login.dart';
+import 'package:spot_runner_mobile/features/event/screens/dashboard_screen.dart';
+import 'package:spot_runner_mobile/features/event/screens/profile_screen.dart' hide UserProfile;
+
+// TODO: Sesuaikan import ini dengan lokasi file model Anda yang sebenarnya
+import 'package:spot_runner_mobile/core/models/event_entry.dart'; 
+import 'package:spot_runner_mobile/core/models/user_entry.dart';
+import 'package:spot_runner_mobile/core/config/api_config.dart';
+import 'package:spot_runner_mobile/features/auth/screens/profile.dart';
 import 'package:spot_runner_mobile/features/merchandise/screens/merchandise_page.dart';
 
 class LeftDrawer extends StatelessWidget {
@@ -23,7 +30,7 @@ class LeftDrawer extends StatelessWidget {
             child: ListView(
               children: [
                 const DrawerHeader(
-                  decoration: BoxDecoration(color: Colors.blue),
+                  decoration: BoxDecoration(color: Color(0xFF1D4ED8)),
                   child: Column(
                     children: [
                       Text(
@@ -61,21 +68,98 @@ class LeftDrawer extends StatelessWidget {
                 ListTile(
                   leading: const Icon(Icons.dashboard),
                   title: const Text('Dashboard'),
-                  onTap: () {
-                    // TODO: Navigate ke Dashboard
-                    Navigator.pop(context);
+                  onTap: () async {
+                    // Tampilkan loading snackbar agar user tahu proses sedang berjalan
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text("Loading Dashboard data..."),
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                    }
+
+                    try {
+                      // 1. Fetch Data User Profile
+                      final userResponse = await request.get(
+                          'http://127.0.0.1:8000/api/profile/'
+                      );
+                      
+                      print('DEBUG - User Response: $userResponse');
+                      print('DEBUG - User Response Type: ${userResponse.runtimeType}');
+
+                      // Parse user profile - handle both single object and list
+                      UserProfile userProfile;
+                      if (userResponse is List && userResponse.isNotEmpty) {
+                        // Response adalah list, ambil elemen pertama
+                        userProfile = UserProfile.fromJson(
+                          Map<String, dynamic>.from(userResponse[0] as Map)
+                        );
+                      } else if (userResponse is Map) {
+                        // Response adalah single object
+                        userProfile = UserProfile.fromJson(
+                          Map<String, dynamic>.from(userResponse)
+                        );
+                      } else {
+                        throw Exception("Invalid user profile response format: ${userResponse.runtimeType}");
+                      }
+
+                      // 2. Fetch Data Events
+                      final eventResponse = await request.get(
+                          'http://127.0.0.1:8000/api/events/'
+                      );
+                      
+                      print('DEBUG - Event Response: $eventResponse');
+                      print('DEBUG - Event Response Type: ${eventResponse.runtimeType}');
+
+                      // Parse events
+                      List<EventDetail> events = [];
+                      if (eventResponse is List) {
+                        events = eventResponse
+                            .map((item) => EventDetail.fromJson(
+                              Map<String, dynamic>.from(item as Map)
+                            ))
+                            .toList();
+                      } else {
+                        throw Exception("Invalid events response format: ${eventResponse.runtimeType}");
+                      }
+
+                      // 3. Navigasi ke DashboardScreen dengan membawa data
+                      if (context.mounted) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => DashboardScreen(
+                              userProfile: userProfile,
+                              events: events,
+                            ),
+                          ),
+                        );
+                      }
+                    } catch (e, stackTrace) {
+                      // Error handling jika fetch gagal
+                      print('ERROR: $e');
+                      print('STACK TRACE: $stackTrace');
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text("Gagal memuat data: ${e.toString()}"),
+                            backgroundColor: Colors.red,
+                            duration: const Duration(seconds: 3),
+                          ),
+                        );
+                      }
+                    }
                   },
                 ),
                 ListTile(
                   leading: const Icon(Icons.account_box),
                   title: const Text('Profile'),
                   onTap: () {
-                    // TODO: Navigate ke Profile
-                    Navigator.pushReplacement(
+                    Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) =>
-                            RunnerProfilePage(username: username),
+                        builder: (context) => const ProfileScreen(),
                       ),
                     );
                   },
@@ -120,9 +204,9 @@ class LeftDrawer extends StatelessWidget {
                     MaterialPageRoute(builder: (context) => const LoginPage()),
                   );
                 } else {
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(SnackBar(content: Text(message)));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(message)),
+                  );
                 }
               }
             },

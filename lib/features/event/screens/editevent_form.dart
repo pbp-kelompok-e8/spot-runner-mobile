@@ -3,18 +3,19 @@ import 'package:intl/intl.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:spot_runner_mobile/core/widgets/left_drawer.dart';
-import 'package:spot_runner_mobile/features/event/screens/testpage.dart';
 import 'package:provider/provider.dart';
 import 'package:pbp_django_auth/pbp_django_auth.dart';
 
-class EventFormPage extends StatefulWidget {
-  const EventFormPage({super.key});
+class EditEventFormPage extends StatefulWidget {
+  final Map<String, dynamic> event;
+
+  const EditEventFormPage({super.key, required this.event});
 
   @override
-  State<EventFormPage> createState() => _EventFormPageState();
+  State<EditEventFormPage> createState() => _EditEventFormPageState();
 }
 
-class _EventFormPageState extends State<EventFormPage> {
+class _EditEventFormPageState extends State<EditEventFormPage> {
   final _formKey = GlobalKey<FormState>();
   String _eventName = "";
   String _description = "";
@@ -35,6 +36,31 @@ class _EventFormPageState extends State<EventFormPage> {
   void initState() {
     super.initState();
     final df = DateFormat('yyyy-MM-dd HH:mm');
+
+    final data = widget.event;
+
+    _eventName = data['name'] ?? "";
+    _description = data['description'] ?? "";
+    _totalParticipants = data['capacity'] ?? 0;
+
+    String loc = data['location'] ?? "jakarta_barat";
+    _location = _cities.contains(loc) ? loc : _cities[0];
+
+    _image = data['image'] ?? "";
+    _image2 = data['image2'] ?? "";
+    _image3 = data['image3'] ?? "";
+    _contactPerson = data['contact'] ?? "";
+    _coin = data['coin'] ?? 0;
+
+    if (data['event_date'] != null)
+      _eventDate = DateTime.parse(data['event_date']);
+    if (data['regist_deadline'] != null)
+      _registDeadline = DateTime.parse(data['regist_deadline']);
+
+    if (data['event_categories'] != null) {
+      _selectedCategories = List<String>.from(data['event_categories']);
+    }
+
     _eventDateController.text = df.format(_eventDate);
     _deadlineController.text = df.format(_registDeadline);
   }
@@ -78,6 +104,7 @@ class _EventFormPageState extends State<EventFormPage> {
           child: child!,
         );
       },
+      // ------------------------------------
     );
 
     if (datePart != null) {
@@ -164,7 +191,7 @@ class _EventFormPageState extends State<EventFormPage> {
     "half_marathon",
     "full_marathon",
   ];
-  final List<String> _selectedCategories = [];
+  List<String> _selectedCategories = [];
 
   Widget _buildInputLabel(String label) {
     return Padding(
@@ -205,6 +232,15 @@ class _EventFormPageState extends State<EventFormPage> {
   @override
   Widget build(BuildContext context) {
     final request = context.watch<CookieRequest>();
+    final dynamic sessionUserId = request.jsonData.containsKey('user_id')
+        ? request.jsonData['user_id']
+        : null;
+
+    final int? eventUserId = sessionUserId is int
+        ? sessionUserId
+        : sessionUserId != null
+        ? int.tryParse(sessionUserId.toString())
+        : null;
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
@@ -244,7 +280,7 @@ class _EventFormPageState extends State<EventFormPage> {
                           child: Column(
                             children: const [
                               Text(
-                                'Create New Event',
+                                'Edit Event',
                                 style: TextStyle(
                                   fontSize: 24,
                                   fontWeight: FontWeight.w800,
@@ -253,7 +289,7 @@ class _EventFormPageState extends State<EventFormPage> {
                               ),
                               SizedBox(height: 8),
                               Text(
-                                'Launch new marathon event',
+                                'Edit your marathon event details',
                                 style: TextStyle(
                                   fontSize: 15,
                                   color: Colors.black54,
@@ -266,6 +302,7 @@ class _EventFormPageState extends State<EventFormPage> {
 
                         _buildInputLabel("Event Name"),
                         TextFormField(
+                          initialValue: _eventName,
                           decoration: _buildInputDecoration("Enter event name"),
                           onChanged: (value) =>
                               setState(() => _eventName = value),
@@ -277,6 +314,7 @@ class _EventFormPageState extends State<EventFormPage> {
 
                         _buildInputLabel("Event Description"),
                         TextFormField(
+                          initialValue: _description,
                           maxLines: 4,
                           decoration: _buildInputDecoration(
                             "Describe what the event is about...",
@@ -291,11 +329,11 @@ class _EventFormPageState extends State<EventFormPage> {
 
                         _buildInputLabel("Location"),
                         DropdownButtonFormField<String>(
+                          value: _location,
                           decoration: _buildInputDecoration(
                             "Select Location",
                             suffixIcon: const Icon(Icons.location_on_outlined),
                           ),
-                          value: _location,
                           icon: const Icon(Icons.keyboard_arrow_down),
                           items: _cities
                               .map(
@@ -381,6 +419,7 @@ class _EventFormPageState extends State<EventFormPage> {
 
                         _buildInputLabel("Contact Person"),
                         TextFormField(
+                          initialValue: _contactPerson,
                           decoration: _buildInputDecoration(
                             "Enter phone number",
                           ),
@@ -394,6 +433,7 @@ class _EventFormPageState extends State<EventFormPage> {
 
                         _buildInputLabel("Max Participants"),
                         TextFormField(
+                          initialValue: _totalParticipants.toString(),
                           decoration: _buildInputDecoration(
                             "0",
                             suffixIcon: const Icon(Icons.people_outline),
@@ -416,6 +456,7 @@ class _EventFormPageState extends State<EventFormPage> {
 
                         _buildInputLabel("Coin Reward"),
                         TextFormField(
+                          initialValue: _coin.toString(),
                           decoration: _buildInputDecoration(
                             "0",
                             suffixIcon: const Icon(Icons.people_outline),
@@ -425,13 +466,11 @@ class _EventFormPageState extends State<EventFormPage> {
                             () => _coin = int.tryParse(value ?? '') ?? 0,
                           ),
                           validator: (value) {
-                            if (value == null || value.isEmpty) {
+                            if (value == null || value.isEmpty)
                               return "Required";
-                            }
-                            final int? coin = int.tryParse(value);
-                            if (coin == null || coin < 0) {
+                            final int? participants = int.tryParse(value);
+                            if (participants == null || participants < 0)
                               return "Invalid number";
-                            }
                             return null;
                           },
                         ),
@@ -485,6 +524,7 @@ class _EventFormPageState extends State<EventFormPage> {
 
                         _buildInputLabel("Image URL (Optional)"),
                         TextFormField(
+                          initialValue: _image,
                           decoration: _buildInputDecoration(
                             "https://example.com/image.jpg",
                             suffixIcon: const Icon(Icons.image_outlined),
@@ -498,6 +538,7 @@ class _EventFormPageState extends State<EventFormPage> {
 
                         _buildInputLabel("Image 2 URL (Optional)"),
                         TextFormField(
+                          initialValue: _image2,
                           decoration: _buildInputDecoration(
                             "https://example.com/image.jpg",
                             suffixIcon: const Icon(Icons.image_outlined),
@@ -511,6 +552,7 @@ class _EventFormPageState extends State<EventFormPage> {
 
                         _buildInputLabel("Image 3 URL (Optional)"),
                         TextFormField(
+                          initialValue: _image3,
                           decoration: _buildInputDecoration(
                             "https://example.com/image.jpg",
                             suffixIcon: const Icon(Icons.image_outlined),
@@ -551,12 +593,15 @@ class _EventFormPageState extends State<EventFormPage> {
                         return;
                       }
                       if (_formKey.currentState!.validate()) {
+                        // Tampilkan loading
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(content: Text('Sending data...')),
                         );
+                        String id = widget.event['id'].toString();
+
                         try {
                           final response = await request.postJson(
-                            'http://localhost:8000/event/create-flutter/',
+                            'http://localhost:8000/event/edit-flutter/$id/',
                             jsonEncode({
                               "name": _eventName,
                               "description": _description,
@@ -583,12 +628,7 @@ class _EventFormPageState extends State<EventFormPage> {
                                   backgroundColor: Colors.green,
                                 ),
                               );
-                              Navigator.pushReplacement(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const EventListPage(),
-                                ),
-                              );
+                              Navigator.pop(context, true);
                             } else {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
@@ -613,7 +653,7 @@ class _EventFormPageState extends State<EventFormPage> {
                       }
                     },
                     child: const Text(
-                      "Create Event",
+                      "Edit",
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -621,8 +661,7 @@ class _EventFormPageState extends State<EventFormPage> {
                     ),
                   ),
                 ),
-
-                const SizedBox(height: 16), 
+                const SizedBox(height: 16),
                 SizedBox(
                   width: double.infinity,
                   height: 56,
