@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:pbp_django_auth/pbp_django_auth.dart';
 import 'package:spot_runner_mobile/features/event/screens/editevent_form.dart';
 import 'package:spot_runner_mobile/features/event/screens/testpage.dart';
+import 'package:spot_runner_mobile/core/config/api_config.dart'; 
 
 class EventDetailPage extends StatefulWidget {
   final String eventId;
@@ -45,7 +46,7 @@ class _EventDetailPageState extends State<EventDetailPage> {
   Future<Map<String, dynamic>> fetchEventDetail() async {
     final request = context.read<CookieRequest>();
     final response = await request.get(
-      'http://localhost:8000/event/json/${widget.eventId}/',
+      ApiConfig.eventDetail(widget.eventId),
     );
 
     if (response is List) {
@@ -82,7 +83,7 @@ class _EventDetailPageState extends State<EventDetailPage> {
 
   Future<void> _deleteEvent(String id) async {
     final Uri url = Uri.parse(
-      'http://localhost:8000/event/delete-flutter/$id/',
+      ApiConfig.deleteEventUrl(id),
     );
     final request = context.read<CookieRequest>();
     try {
