@@ -93,11 +93,14 @@ Pengguna ini dapat menambahkan event-event baru atau pun mengubah detail-detail 
 ### Design File Figma:
 https://www.figma.com/design/bPYWoCrt7XljkLbyVaHgRU/PBP-Kelompok?node-id=0-1&t=6whKcuuazAz6Wb6q-1
 
+### Video :
+https://youtu.be/HZcxoDWDpkc?si=sSLzwM2JIiY-d_Ml
+
 ### Download : 
 # Spot Runner Mobile
 [![Build Status](https://app.bitrise.io/app/ff81e75c-daaa-42bf-8f54-8bf4c7b28ff3/status.svg?token=Sw4g9rePx3dIL3A1k-w82A&branch=main)](https://app.bitrise.io/app/ff81e75c-daaa-42bf-8f54-8bf4c7b28ff3)
 
-Download aplikasi versi terbaru: [Download APK](https://app.bitrise.io/app/ff81e75c-daaa-42bf-8f54-8bf4c7b28ff3/installable-artifacts/cf8c59484098e501/public-install-page/dc29a84a0e8ffd7624dbdecb08b4652d)
+Download aplikasi versi terbaru: [Download APK](https://app.bitrise.io/app/ff81e75c-daaa-42bf-8f54-8bf4c7b28ff3/installable-artifacts/b7821f7803e37487/public-install-page/7f6beb6699ca8ec50143acc5562428b1)
 
 ## Alur Pengintegrasian dengan Web Service
 ### 1. Pengiriman request (Flutter)

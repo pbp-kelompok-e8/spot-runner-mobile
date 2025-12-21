@@ -3,10 +3,12 @@ import 'package:pbp_django_auth/pbp_django_auth.dart';
 import 'package:provider/provider.dart';
 import 'package:spot_runner_mobile/core/config/api_config.dart';
 import 'package:spot_runner_mobile/features/merchandise/models/merchandise_model.dart';
-import 'package:spot_runner_mobile/features/merchandise/widgets/product_card.dart'; // Import widget baru
+import 'package:spot_runner_mobile/features/merchandise/widgets/product_card.dart';
 import 'package:spot_runner_mobile/core/widgets/left_drawer.dart';
 import 'package:spot_runner_mobile/features/merchandise/screens/add_product_page.dart';
 import 'package:spot_runner_mobile/features/merchandise/screens/history_page.dart';
+import 'package:spot_runner_mobile/core/widgets/error_handler.dart';
+import 'package:spot_runner_mobile/core/widgets/error_retry.dart';
 import 'dart:async';
 
 class MerchandisePage extends StatefulWidget {
@@ -22,8 +24,8 @@ class _MerchandisePageState extends State<MerchandisePage> {
   String userType = 'guest';
   String username = 'Guest';
   bool isLoadingCoins = true;
-  int _refreshKey = 0; // Key untuk force rebuild
-  Timer? _refreshTimer; // Timer untuk auto refresh
+  int _refreshKey = 0;
+  Timer? _refreshTimer;
 
   final List<Map<String, String>> categories = [
     {'value': 'All', 'label': 'All'},
@@ -42,15 +44,13 @@ class _MerchandisePageState extends State<MerchandisePage> {
 
   @override
   void dispose() {
-    _refreshTimer?.cancel(); // Cancel timer saat dispose
+    _refreshTimer?.cancel();
     super.dispose();
   }
 
-  // Auto refresh setiap 30 detik untuk organizer
   void _startAutoRefresh() {
     _refreshTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
       if (mounted && userType == 'organizer') {
-        // debugPrint('Auto refreshing data for organizer...');
         fetchUserCoins();
         setState(() {
           _refreshKey++;
@@ -64,14 +64,11 @@ class _MerchandisePageState extends State<MerchandisePage> {
     try {
       final response = await request.get(ApiConfig.userCoins);
 
-      // debugPrint('User coins response: $response');
-
       if (mounted) {
         setState(() {
           userCoins = response['coins'] ?? 0;
           userType = response['user_type'] ?? 'guest';
-          username =
-              response['username'] ?? 'Guest'; // Ambil username dari response
+          username = response['username'] ?? 'Guest';
           isLoadingCoins = false;
         });
       }
@@ -82,6 +79,11 @@ class _MerchandisePageState extends State<MerchandisePage> {
           isLoadingCoins = false;
           username = 'Guest';
         });
+
+        context.read<ConnectivityProvider>().setError(
+          "Failed to load coin balance. Please check your connection.",
+          () => fetchUserCoins(),
+        );
       }
     }
   }
@@ -92,19 +94,8 @@ class _MerchandisePageState extends State<MerchandisePage> {
       url += '?category=$selectedCategory';
     }
 
-    // Debug: Print URL
-    // debugPrint('Fetching merchandise from: $url');
-
     try {
       final response = await request.get(url);
-
-      // Debug: Print first item to see structure
-      // if (response.isNotEmpty) {
-      //   debugPrint('First item structure: ${response[0]}');
-      // }
-
-      // Debug: Print response
-      // debugPrint('Merchandise response: $response');
 
       List<Merchandise> listMerchandise = [];
       for (var d in response) {
@@ -115,13 +106,14 @@ class _MerchandisePageState extends State<MerchandisePage> {
       return listMerchandise;
     } catch (e) {
       debugPrint('Error fetching merchandise: $e');
-      return [];
+      throw Exception('Failed to load merchandise');
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final request = context.watch<CookieRequest>();
+    final connectivityProvider = context.watch<ConnectivityProvider>();
 
     return Scaffold(
       appBar: AppBar(
@@ -129,156 +121,133 @@ class _MerchandisePageState extends State<MerchandisePage> {
           'Merchandise',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
-        backgroundColor: Color(0xFF1D4ED8),
+        backgroundColor: const Color(0xFF1D4ED8),
         iconTheme: const IconThemeData(color: Colors.white),
       ),
-      drawer: LeftDrawer(),
-      body: RefreshIndicator(
-        onRefresh: () async {
-          await fetchUserCoins();
-          setState(() {
-            _refreshKey++; // Force rebuild products
-          });
-        },
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Coin Balance Card
-                _buildCoinBalanceCard(),
-
-                const SizedBox(height: 20),
-
-                // Section Title
-                const Text(
-                  'Merchandise',
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                ),
-
-                const SizedBox(height: 16),
-
-                // Category Filter
-                _buildCategoryFilter(),
-
-                const SizedBox(height: 20),
-
-                // Add Product Button (Only for Organizers)
-                if (userType == 'organizer') _buildAddProductButton(),
-
-                const SizedBox(height: 16),
-
-                // Products Grid
-                FutureBuilder(
-                  key: ValueKey(_refreshKey), // Force rebuild dengan key
-                  future: fetchMerchandise(request),
-                  builder: (context, AsyncSnapshot snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(
-                        child: Padding(
-                          padding: EdgeInsets.all(32.0),
-                          child: CircularProgressIndicator(),
+      drawer: const LeftDrawer(),
+      body: connectivityProvider.hasError
+          ? ErrorRetryWidget(
+              message: connectivityProvider.errorMessage,
+              onRetry: () => connectivityProvider.retry(),
+            )
+          : RefreshIndicator(
+              onRefresh: () async {
+                await fetchUserCoins();
+                setState(() {
+                  _refreshKey++;
+                });
+              },
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildCoinBalanceCard(),
+                      const SizedBox(height: 20),
+                      const Text(
+                        'Merchandise',
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
                         ),
-                      );
-                    }
-
-                    if (snapshot.hasError) {
-                      // Debug: Show error
-                      debugPrint('Snapshot error: ${snapshot.error}');
-                      return Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(32.0),
-                          child: Column(
-                            children: [
-                              Icon(
-                                Icons.error_outline,
-                                size: 64,
-                                color: Colors.red[300],
+                      ),
+                      const SizedBox(height: 16),
+                      _buildCategoryFilter(),
+                      const SizedBox(height: 20),
+                      if (userType == 'organizer') _buildAddProductButton(),
+                      const SizedBox(height: 16),
+                      FutureBuilder(
+                        key: ValueKey(_refreshKey),
+                        future: fetchMerchandise(request),
+                        builder: (context, AsyncSnapshot snapshot) {
+                          if (snapshot.connectionState ==
+                              ConnectionState.waiting) {
+                            return const Center(
+                              child: Padding(
+                                padding: EdgeInsets.all(32.0),
+                                child: CircularProgressIndicator(),
                               ),
-                              const SizedBox(height: 16),
-                              Text(
-                                'Error loading merchandise',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  color: Colors.red[600],
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                '${snapshot.error}',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.grey[600],
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    }
-
-                    if (!snapshot.hasData || snapshot.data.isEmpty) {
-                      return Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(32.0),
-                          child: Column(
-                            children: [
-                              Icon(
-                                Icons.shopping_bag_outlined,
-                                size: 72,
-                                color: Colors.grey[400],
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                'No merchandise available',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  color: Colors.grey[600],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    }
-
-                    return GridView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            crossAxisSpacing: 12,
-                            mainAxisSpacing: 12,
-                            childAspectRatio: 0.88,
-                          ),
-                      itemCount: snapshot.data!.length,
-                      itemBuilder: (context, index) {
-                        Merchandise merchandise = snapshot.data![index];
-                        return ProductCard(
-                          merchandise: merchandise,
-                          onRefresh: () async {
-                            debugPrint(
-                              'ProductCard onRefresh called, calling setState',
                             );
-                            await fetchUserCoins();
-                            setState(() {
-                              _refreshKey++;
-                            });
-                          },
-                        );
-                      },
-                    );
-                  },
+                          }
+
+                          if (snapshot.hasError) {
+                            return Center(
+                              child: Padding(
+                                padding: const EdgeInsets.all(32.0),
+                                child: ErrorRetryWidget(
+                                  message:
+                                      'Failed to load merchandise. Please check your connection.',
+                                  onRetry: () {
+                                    setState(() {
+                                      _refreshKey++;
+                                    });
+                                  },
+                                ),
+                              ),
+                            );
+                          }
+
+                          if (!snapshot.hasData || snapshot.data.isEmpty) {
+                            return Center(
+                              child: Padding(
+                                padding: const EdgeInsets.all(32.0),
+                                child: Column(
+                                  children: [
+                                    Icon(
+                                      Icons.shopping_bag_outlined,
+                                      size: 72,
+                                      color: Colors.grey[400],
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      'No merchandise available',
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          }
+
+                          return GridView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            gridDelegate:
+                                const SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: 2,
+                                  crossAxisSpacing: 12,
+                                  mainAxisSpacing: 12,
+                                  childAspectRatio: 0.88,
+                                ),
+                            itemCount: snapshot.data!.length,
+                            itemBuilder: (context, index) {
+                              Merchandise merchandise = snapshot.data![index];
+                              return ProductCard(
+                                merchandise: merchandise,
+                                onRefresh: () async {
+                                  debugPrint(
+                                    'ProductCard onRefresh called, calling setState',
+                                  );
+                                  await fetchUserCoins();
+                                  setState(() {
+                                    _refreshKey++;
+                                  });
+                                },
+                              );
+                            },
+                          );
+                        },
+                      ),
+                    ],
+                  ),
                 ),
-              ],
+              ),
             ),
-          ),
-        ),
-      ),
     );
   }
 
@@ -300,10 +269,8 @@ class _MerchandisePageState extends State<MerchandisePage> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Bagian Atas: Ikon Koin dan Info Saldo
           Row(
             children: [
-              // Icon Koin
               Image.asset(
                 'lib/assets/images/coin-icon.png',
                 width: 80,
@@ -318,7 +285,6 @@ class _MerchandisePageState extends State<MerchandisePage> {
                 },
               ),
               const SizedBox(width: 20),
-              // Teks Saldo
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -347,8 +313,6 @@ class _MerchandisePageState extends State<MerchandisePage> {
             ],
           ),
           const SizedBox(height: 24),
-
-          // Tombol History
           OutlinedButton(
             onPressed: () {
               Navigator.push(
@@ -440,7 +404,6 @@ class _MerchandisePageState extends State<MerchandisePage> {
       width: double.infinity,
       child: ElevatedButton.icon(
         onPressed: () {
-          // Navigate to add product page
           Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => const AddProductPage()),
@@ -451,7 +414,7 @@ class _MerchandisePageState extends State<MerchandisePage> {
         icon: const Icon(Icons.add),
         label: const Text('Add New Product'),
         style: ElevatedButton.styleFrom(
-          backgroundColor: Color(0xFF1D4ED8),
+          backgroundColor: const Color(0xFF1D4ED8),
           foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(vertical: 18),
           shape: RoundedRectangleBorder(

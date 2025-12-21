@@ -326,7 +326,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             "$totalEvents events",
           ),
           const SizedBox(height: 16),
-          _buildDetailRow(Icons.calendar_today_outlined, "Joined", joinedDate),
+          _buildDetailRow(Icons.calendar_today_outlined, "Last Login", lastLogin),
           const SizedBox(height: 16),
           _buildDetailRow(
             Icons.location_on_outlined,

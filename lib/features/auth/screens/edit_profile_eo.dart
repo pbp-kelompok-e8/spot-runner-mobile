@@ -22,19 +22,15 @@ class _EditEOProfilePageState extends State<EditEOProfilePage> {
   bool _isLoading = true;
 
   final List<String> locations = [
-    'jakarta',
-    'surabaya',
-    'bandung',
-    'medan',
-    'semarang',
-    'makassar',
-    'palembang',
-    'denpasar',
-    'yogyakarta',
-    'surakarta',
-    'malang',
-    'pekanbaru',
-    'depok',
+    'Jakarta Barat',
+    'Jakarta Pusat',
+    'Jakarta Selatan',
+    'Jakarta Timur',
+    'Jakarta Utara',
+    'Bekasi',
+    'Bogor',
+    'Depok',
+    'Tangerang',
   ];
 
   @override
