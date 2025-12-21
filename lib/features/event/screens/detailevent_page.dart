@@ -184,11 +184,9 @@ class _EventDetailPageState extends State<EventDetailPage> {
     }
 
     // URL: /api/participate/<username>/<event_id>/<category>/
-    final url = ApiConfig.participateUrl(
-      username,
-      widget.eventId,
-      _selectedCategory!,
-    );
+    final String categoryValue = _getCategoryValue(_selectedCategory!);
+
+    final url = ApiConfig.participateUrl(username, widget.eventId, categoryValue);
 
     try {
       final response = await request.post(url, {});
