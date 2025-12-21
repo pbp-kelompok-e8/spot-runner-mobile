@@ -1,9 +1,18 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
-import 'package:spot_runner_mobile/screens/menu.dart';
+import 'package:spot_runner_mobile/core/widgets/error_handler.dart';
+import 'package:spot_runner_mobile/core/widgets/error_retry.dart';
+import 'package:spot_runner_mobile/features/auth/screens/login.dart';
+import 'package:spot_runner_mobile/features/event/screens/editevent_form.dart';
+import 'package:spot_runner_mobile/features/event/screens/event_form.dart';
+import 'package:spot_runner_mobile/core/screens/menu.dart';
 import 'package:pbp_django_auth/pbp_django_auth.dart';
 import 'package:provider/provider.dart';
-// import 'package:football_news/screens/login.dart';
-
+import 'package:flutter/material.dart';
+import 'package:spot_runner_mobile/features/event/screens/testpage.dart';
+import 'package:spot_runner_mobile/features/auth/screens/login.dart';
+import 'package:spot_runner_mobile/core/providers/user_provider.dart';
 
 void main() {
   runApp(const MyApp());
@@ -12,36 +21,55 @@ void main() {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
-    return Provider(
-      create: (_) {
-        CookieRequest request = CookieRequest();
-        return request;
-      },
+    return MultiProvider(
+      // <--- Ganti jadi MultiProvider
+      providers: [
+        Provider(
+          create: (_) {
+            CookieRequest request = CookieRequest();
+            return request;
+          },
+        ),
+        ChangeNotifierProvider(
+          // <--- Tambahkan UserProvider
+          create: (_) => UserProvider(),
+        ),
+        ChangeNotifierProvider(create: (_) => ConnectivityProvider()),
+      ],
       child: MaterialApp(
         title: 'Spot Runner',
+        debugShowCheckedModeBanner: false,
         theme: ThemeData(
-          // This is the theme of your application.
-          //
-          // TRY THIS: Try running your application with "flutter run". You'll see
-          // the application has a purple toolbar. Then, without quitting the app,
-          // try changing the seedColor in the colorScheme below to Colors.green
-          // and then invoke "hot reload" (save your changes or press the "hot
-          // reload" button in a Flutter-supported IDE, or press "r" if you used
-          // the command line to start the app).
-          //
-          // Notice that the counter didn't reset back to zero; the application
-          // state is not lost during the reload. To reset the state, use hot
-          // restart instead.
-          //
-          // This works for code too, not just values: Most code changes can be
-          // tested with just a hot reload.
-            colorScheme: ColorScheme.fromSwatch(primarySwatch: Colors.blue)
-          .copyWith(secondary: Colors.blueAccent[400]),
+          colorScheme: ColorScheme.fromSwatch(
+            primarySwatch: Colors.blue,
+          ).copyWith(secondary: Colors.blueAccent[400]),
         ),
-        home: MyHomePage(),
+        builder: (context, child) {
+          final connectivity = context.watch<ConnectivityProvider>();
+          return Stack(
+            children: [
+              child!, 
+              if (connectivity.hasError)
+                Positioned.fill(
+                  child: Container(
+                    color: Colors.white.withOpacity(
+                      0.9,
+                    ), 
+                    child: Scaffold(
+                      backgroundColor: Colors.transparent,
+                      body: ErrorRetryWidget(
+                        message: connectivity.errorMessage,
+                        onRetry: () => connectivity.retry(),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          );
+        },
+        home: const LoginPage(),
       ),
     );
   }

@@ -1,0 +1,30 @@
+[33m9e1c98f[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mqowiy-review[m[33m, [m[1;31morigin/dev[m[33m)[m HEAD@{0}: pull origin dev: Fast-forward
+[33m3019e89[m[33m ([m[1;31morigin/qowiy-review[m[33m, [m[1;32mdev[m[33m)[m HEAD@{1}: merge dev: Fast-forward
+[33m828de30[m HEAD@{2}: checkout: moving from dev to qowiy-review
+[33m3019e89[m[33m ([m[1;31morigin/qowiy-review[m[33m, [m[1;32mdev[m[33m)[m HEAD@{3}: commit: update
+[33mb51623f[m HEAD@{4}: pull origin dev: Fast-forward
+[33m03987af[m HEAD@{5}: checkout: moving from qowiy-review to dev
+[33m828de30[m HEAD@{6}: merge dev: Merge made by the 'ort' strategy.
+[33m95fa0a2[m HEAD@{7}: checkout: moving from dev to qowiy-review
+[33m03987af[m HEAD@{8}: commit: review updated
+[33m3160bff[m HEAD@{9}: pull origin dev: Fast-forward
+[33m11b59a3[m HEAD@{10}: pull origin dev: Fast-forward
+[33m4dd1c0d[m HEAD@{11}: checkout: moving from dev to dev
+[33m4dd1c0d[m HEAD@{12}: checkout: moving from dev to dev
+[33m4dd1c0d[m HEAD@{13}: reset: moving to 4dd1c0d
+[33m11b59a3[m HEAD@{14}: pull origin dev: Fast-forward
+[33m4dd1c0d[m HEAD@{15}: checkout: moving from qowiy-review to dev
+[33m95fa0a2[m HEAD@{16}: commit: update dataset
+[33mb76aece[m HEAD@{17}: commit: api config
+[33m20dd5a3[m HEAD@{18}: commit: eo profile
+[33maaf1946[m HEAD@{19}: commit: progress fitur review*
+[33m6617a05[m[33m ([m[1;32mwilliam-event[m[33m)[m HEAD@{20}: merge william-event: Fast-forward
+[33m97d4f3e[m HEAD@{21}: checkout: moving from william-event to qowiy-review
+[33m6617a05[m[33m ([m[1;32mwilliam-event[m[33m)[m HEAD@{22}: commit (merge): Progress fitur event
+[33m97d4f3e[m HEAD@{23}: checkout: moving from qowiy-review to william-event
+[33m97d4f3e[m HEAD@{24}: commit: save progress
+[33mdd79fd7[m[33m ([m[1;33mtag: [m[1;33mv1.0.0+1-20251130042902[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m HEAD@{25}: checkout: moving from main to qowiy-review
+[33mdd79fd7[m[33m ([m[1;33mtag: [m[1;33mv1.0.0+1-20251130042902[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m HEAD@{26}: pull origin main: Fast-forward
+[33m071844b[m[33m ([m[1;33mtag: [m[1;33mv1.0.0+1-20251124140445[m[33m)[m HEAD@{27}: pull: Fast-forward
+[33m932a3b6[m HEAD@{28}: commit: dataset
+[33m4dd1c0d[m HEAD@{29}: clone: from https://github.com/pbp-kelompok-e8/spot-runner-mobile.git
