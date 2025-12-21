@@ -9,6 +9,7 @@ import 'package:provider/provider.dart';
 import 'package:spot_runner_mobile/core/providers/user_provider.dart';
 import 'package:spot_runner_mobile/features/event/screens/dashboard_screen.dart';
 import 'package:spot_runner_mobile/features/event/screens/testpage.dart';
+import 'package:spot_runner_mobile/features/event/screens/profile_screen.dart';
 import 'package:spot_runner_mobile/features/merchandise/screens/merchandise_page.dart';
 import 'package:spot_runner_mobile/core/config/api_config.dart';
 
@@ -18,6 +19,8 @@ class LeftDrawer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final request = context.watch<CookieRequest>();
+    final String userRole = request.jsonData['role'] ?? '';
+    bool isRunner = userRole.toLowerCase() == 'runner';
 
     String username = "";
     try {
@@ -71,27 +74,28 @@ class LeftDrawer extends StatelessWidget {
                     );
                   },
                 ),
-                ListTile(
-                  leading: const Icon(Icons.dashboard),
-                  title: const Text('Dashboard'),
-                  onTap: () {
-                    // TODO: Navigate ke Dashboard
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => EventListPage()),
-                    );
-                  },
-                ),
+                if (!isRunner)
+                  ListTile(
+                    leading: const Icon(Icons.dashboard),
+                    title: const Text('Dashboard'),
+                    onTap: () {
+                      // Event Organizer dashboard
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const DashboardScreen(userProfile: null, events: [])),
+                      );
+                    },
+                  ),
                 ListTile(
                   leading: const Icon(Icons.account_box),
                   title: const Text('Profile'),
                   onTap: () {
-                    // TODO: Navigate ke Profile
+                    // Navigate to role-specific profile page
                     Navigator.push(
                       context,
                       MaterialPageRoute(
                         builder: (context) =>
-                            RunnerProfilePage(username: username),
+                            isRunner ? RunnerProfilePage(username: username) : const ProfileScreen(),
                       ),
                     );
                   },
