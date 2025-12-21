@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:spot_runner_mobile/core/config/api_config.dart';
 import 'package:spot_runner_mobile/core/models/event_entry.dart';
 import 'package:spot_runner_mobile/core/models/user_entry.dart';
+import 'package:spot_runner_mobile/core/widgets/error_handler.dart';
 import 'package:spot_runner_mobile/core/widgets/left_drawer.dart';
 import 'package:spot_runner_mobile/features/event/screens/detailevent_page.dart';
 import 'package:spot_runner_mobile/features/event/screens/editevent_form.dart';
@@ -33,7 +34,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     setState(() => _isLoading = true);
 
     final request = context.read<CookieRequest>();
+    final connectivity = context.read<ConnectivityProvider>();
     final String currentUserName = request.jsonData['username'] ?? '';
+    bool hasConnectionError = false;
 
     // Load profile
     try {
@@ -48,6 +51,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       }
     } catch (e) {
       _userProfile = null;
+      hasConnectionError = true;
     }
 
     // Load events dan filter hanya milik EO yang login
@@ -65,10 +69,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
       }
     } catch (e) {
       _events = [];
+      hasConnectionError = true;
     }
 
     if (mounted) {
       setState(() => _isLoading = false);
+
+      // Tampilkan error overlay jika ada connection error
+      if (hasConnectionError) {
+        connectivity.setError(
+          "Failed to load data. Please check your connection.",
+          () => _loadData(),
+        );
+      }
     }
   }
 
@@ -394,11 +407,9 @@ class EventCard extends StatelessWidget {
 
   // 2. LOGIKA DELETE API
   Future<void> _deleteEvent(BuildContext context, String id) async {
-    // Simpan scaffold messenger sebelum async operation
     final scaffoldMessenger = ScaffoldMessenger.of(context);
     final request = context.read<CookieRequest>();
     try {
-      // Pastikan ApiConfig.deleteEventUrl(id) sudah benar di api_config.dart
       final response = await request.post(ApiConfig.deleteEventUrl(id), {});
 
       if (response['status'] == 'success') {
@@ -408,7 +419,7 @@ class EventCard extends StatelessWidget {
             backgroundColor: Colors.green,
           ),
         );
-        if (onDeleted != null) onDeleted!(); // Hapus dari UI
+        if (onDeleted != null) onDeleted!(); 
       } else {
         scaffoldMessenger.showSnackBar(
           const SnackBar(
@@ -467,190 +478,193 @@ class EventCard extends StatelessWidget {
     final statusStyle = _getStatusStyle(dynamicStatus);
 
     return InkWell(
-    onTap: () async {
-      // Navigasi ke halaman detail
-      final result = await Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => EventDetailPage(eventId: event.id.toString()),
+      onTap: () async {
+        // Navigasi ke halaman detail
+        final result = await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => EventDetailPage(eventId: event.id.toString()),
+          ),
+        );
+
+        // Jika ada perubahan (edit/delete) di detail page, refresh dashboard
+        if ((result == true) && onRefresh != null) {
+          onRefresh!();
+        }
+      },
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: statusStyle['cardColor'],
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: statusStyle['borderColor'], width: 1.5),
         ),
-      );
-
-      // Jika ada perubahan (edit/delete) di detail page, refresh dashboard
-      if ((result == true) && onRefresh != null) {
-        onRefresh!();
-      }
-    },
-    borderRadius: BorderRadius.circular(16),
-    child: Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: statusStyle['cardColor'],
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: statusStyle['borderColor'], width: 1.5),
-      ),
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Status Chip
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: statusStyle['chipColor'],
-              borderRadius: BorderRadius.circular(20),
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Status Chip
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: statusStyle['chipColor'],
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                statusStyle['label'],
+                style: TextStyle(
+                  color: statusStyle['textColor'],
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
+              ),
             ),
-            child: Text(
-              statusStyle['label'],
-              style: TextStyle(
-                color: statusStyle['textColor'],
+            const SizedBox(height: 12),
+            Text(
+              event.name,
+              style: const TextStyle(
+                fontSize: 18,
                 fontWeight: FontWeight.bold,
-                fontSize: 12,
+                color: Color(0xFF1F2937),
               ),
             ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            event.name,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF1F2937),
+            const SizedBox(height: 16),
+            Divider(color: statusStyle['borderColor'].withOpacity(0.5)),
+            const SizedBox(height: 16),
+
+            _buildInfoRow(
+              Icons.calendar_today_outlined,
+              "Date",
+              DateFormat('dd MMM yyyy').format(event.eventDate),
             ),
-          ),
-          const SizedBox(height: 16),
-          Divider(color: statusStyle['borderColor'].withOpacity(0.5)),
-          const SizedBox(height: 16),
+            const SizedBox(height: 12),
+            _buildInfoRow(
+              Icons.location_on_outlined,
+              "Location",
+              event.location.replaceAll("_", " "),
+            ),
+            const SizedBox(height: 12),
+            _buildInfoRow(
+              Icons.run_circle_outlined,
+              "Type",
+              event.eventCategories.isEmpty
+                  ? "-"
+                  : event.eventCategories.join(", ").replaceAll("_", " "),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              "Participant ID",
+              style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              "EVT-${event.id.toString().substring(0, 4).toUpperCase()}",
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+            ),
 
-          _buildInfoRow(
-            Icons.calendar_today_outlined,
-            "Date",
-            DateFormat('dd MMM yyyy').format(event.eventDate),
-          ),
-          const SizedBox(height: 12),
-          _buildInfoRow(
-            Icons.location_on_outlined,
-            "Location",
-            event.location.replaceAll("_", " "),
-          ),
-          const SizedBox(height: 12),
-          _buildInfoRow(
-            Icons.run_circle_outlined,
-            "Type",
-            event.eventCategories.isEmpty
-                ? "-"
-                : event.eventCategories.join(", ").replaceAll("_", " "),
-          ),
-          const SizedBox(height: 20),
-          Text(
-            "Participant ID",
-            style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            "EVT-${event.id.toString().substring(0, 4).toUpperCase()}",
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-          ),
-
-          const SizedBox(height: 20),
-          Row(
-            children: [
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: () async {
-                    final result = await Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => EditEventFormPage(
-                          event: {
-                            "id": event.id,
-                            "name": event.name,
-                            "description": event.description,
-                            "location": event.location,
-                            "event_status": dynamicStatus,
-                            "image": event.image,
-                            "image2": event.image2,
-                            "image3": event.image3,
-                            "event_date": event.eventDate
-                                .toLocal()
-                                .toIso8601String(),
-                            "regist_deadline": event.registDeadline
-                                .toLocal()
-                                .toIso8601String(),
-                            "contact": event.contact,
-                            "capacity": event.capacity,
-                            "coin": event.coin,
-                            "event_categories": event.eventCategories,
-                          },
-                        ),
-                      ),
-                    );
-                    // Refresh data saat kembali dari edit
-                    if (result == true && onRefresh != null) {
-                      onRefresh!();
-                    }
-                  },
-                  icon: const Icon(Icons.edit_outlined, size: 18),
-                  label: const Text("Edit Detail"),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white.withOpacity(0.7),
-                    foregroundColor: const Color(0xFF1D4ED8),
-                    elevation: 0,
-                    side: BorderSide(color: statusStyle['borderColor']),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton.icon(
-                  // LOGIKA DELETE DI SINI
-                  onPressed: () {
-                    showDialog(
-                      context: context,
-                      builder: (context) => AlertDialog(
-                        title: const Text('Delete this event?'),
-                        content: Text(
-                          'Are you sure you want to delete "${event.name}"?',
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(context),
-                            child: const Text('Cancel'),
-                          ),
-                          TextButton(
-                            onPressed: () async {
-                              Navigator.pop(context);
-                              await _deleteEvent(context, event.id.toString());
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () async {
+                      final result = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => EditEventFormPage(
+                            event: {
+                              "id": event.id,
+                              "name": event.name,
+                              "description": event.description,
+                              "location": event.location,
+                              "event_status": dynamicStatus,
+                              "image": event.image,
+                              "image2": event.image2,
+                              "image3": event.image3,
+                              "event_date": event.eventDate
+                                  .toLocal()
+                                  .toIso8601String(),
+                              "regist_deadline": event.registDeadline
+                                  .toLocal()
+                                  .toIso8601String(),
+                              "contact": event.contact,
+                              "capacity": event.capacity,
+                              "coin": event.coin,
+                              "event_categories": event.eventCategories,
                             },
-                            child: const Text(
-                              'Delete',
-                              style: TextStyle(color: Colors.red),
-                            ),
                           ),
-                        ],
+                        ),
+                      );
+                      // Refresh data saat kembali dari edit
+                      if (result == true && onRefresh != null) {
+                        onRefresh!();
+                      }
+                    },
+                    icon: const Icon(Icons.edit_outlined, size: 18),
+                    label: const Text("Edit Detail"),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white.withOpacity(0.7),
+                      foregroundColor: const Color(0xFF1D4ED8),
+                      elevation: 0,
+                      side: BorderSide(color: statusStyle['borderColor']),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                    );
-                  },
-                  icon: const Icon(Icons.delete_outline, size: 18),
-                  label: const Text("Delete"),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFEE2E2),
-                    foregroundColor: const Color(0xFFDC2626),
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
                     ),
                   ),
                 ),
-              ),
-            ],
-          ),
-        ],
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    // LOGIKA DELETE DI SINI
+                    onPressed: () {
+                      showDialog(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: const Text('Delete this event?'),
+                          content: Text(
+                            'Are you sure you want to delete "${event.name}"?',
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: const Text('Cancel'),
+                            ),
+                            TextButton(
+                              onPressed: () async {
+                                Navigator.pop(context);
+                                await _deleteEvent(
+                                  context,
+                                  event.id.toString(),
+                                );
+                              },
+                              child: const Text(
+                                'Delete',
+                                style: TextStyle(color: Colors.red),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.delete_outline, size: 18),
+                    label: const Text("Delete"),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFFEE2E2),
+                      foregroundColor: const Color(0xFFDC2626),
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
-    )
     );
   }
 

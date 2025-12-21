@@ -3,13 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:spot_runner_mobile/core/widgets/error_handler.dart';
 import 'package:spot_runner_mobile/core/widgets/left_drawer.dart';
 import 'package:provider/provider.dart';
 import 'package:pbp_django_auth/pbp_django_auth.dart';
 import 'package:spot_runner_mobile/core/config/api_config.dart';
 import 'package:spot_runner_mobile/features/event/screens/dashboard_screen.dart';
-import 'package:spot_runner_mobile/features/event/screens/detailevent_page.dart'; 
-
+import 'package:spot_runner_mobile/features/event/screens/detailevent_page.dart';
 
 class EditEventFormPage extends StatefulWidget {
   final Map<String, dynamic> event;
@@ -64,27 +64,26 @@ class _EditEventFormPageState extends State<EditEventFormPage> {
 
     if (data['event_categories'] != null) {
       _selectedCategories = List<String>.from(data['event_categories']);
-      if (_selectedCategories.contains("Fun Run")){
+      if (_selectedCategories.contains("Fun Run")) {
         _selectedCategories.remove("Fun Run");
         _selectedCategories.add("fun_run");
       }
-      if (_selectedCategories.contains("5K")){
+      if (_selectedCategories.contains("5K")) {
         _selectedCategories.remove("5K");
         _selectedCategories.add("5k");
       }
-      if (_selectedCategories.contains("10K")){
+      if (_selectedCategories.contains("10K")) {
         _selectedCategories.remove("10K");
         _selectedCategories.add("10k");
       }
-      if (_selectedCategories.contains("Half Marathon")){
+      if (_selectedCategories.contains("Half Marathon")) {
         _selectedCategories.remove("Half Marathon");
         _selectedCategories.add("half_marathon");
       }
-      if (_selectedCategories.contains("Full Marathon")){
+      if (_selectedCategories.contains("Full Marathon")) {
         _selectedCategories.remove("Full Marathon");
         _selectedCategories.add("full_marathon");
       }
-
     }
 
     _eventDateController.text = df.format(_eventDate);
@@ -290,7 +289,13 @@ class _EditEventFormPageState extends State<EditEventFormPage> {
                     children: const [
                       Icon(Icons.arrow_back_ios_new, size: 20),
                       SizedBox(width: 8),
-                      Text("Back", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      Text(
+                        "Back",
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -647,9 +652,12 @@ class _EditEventFormPageState extends State<EditEventFormPage> {
                               "image1": _image,
                               "image2": _image2,
                               "image3": _image3,
-                              "event_date": _eventDate.toLocal().toIso8601String(),
+                              "event_date": _eventDate
+                                  .toLocal()
+                                  .toIso8601String(),
                               "regist_deadline": _registDeadline
-                                  .toLocal().toIso8601String(),
+                                  .toLocal()
+                                  .toIso8601String(),
                               "contact": _contactPerson,
                               "capacity": _totalParticipants,
                               "coin": _coin,
@@ -666,7 +674,8 @@ class _EditEventFormPageState extends State<EditEventFormPage> {
                                   backgroundColor: Colors.green,
                                 ),
                               );
-                              Navigator.pushReplacement(context,
+                              Navigator.pushReplacement(
+                                context,
                                 MaterialPageRoute(
                                   builder: (context) => DashboardScreen(),
                                 ),
@@ -684,11 +693,9 @@ class _EditEventFormPageState extends State<EditEventFormPage> {
                           }
                         } catch (e) {
                           if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text("Error: $e"),
-                                backgroundColor: Colors.red,
-                              ),
+                            context.read<ConnectivityProvider>().setError(
+                              "Failed to edit event. Please check your connection.",
+                              () {},
                             );
                           }
                         }
