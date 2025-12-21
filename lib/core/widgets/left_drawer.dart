@@ -5,10 +5,12 @@ import 'package:spot_runner_mobile/features/auth/screens/login.dart';
 import 'package:spot_runner_mobile/features/auth/screens/profile.dart';
 import 'package:pbp_django_auth/pbp_django_auth.dart';
 import 'package:provider/provider.dart';
-// import 'package:spot_runner_mobile/features/event/screens/testpage.dart';
 import 'package:spot_runner_mobile/core/providers/user_provider.dart';
 import 'package:spot_runner_mobile/features/event/screens/dashboard_screen.dart';
 import 'package:spot_runner_mobile/features/event/screens/testpage.dart';
+import 'package:spot_runner_mobile/features/event/screens/profile_screen.dart';
+import 'package:spot_runner_mobile/features/merchandise/screens/merchandise_page.dart';
+import 'package:spot_runner_mobile/core/config/api_config.dart';
 
 class LeftDrawer extends StatelessWidget {
   const LeftDrawer({super.key});
@@ -16,14 +18,16 @@ class LeftDrawer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final request = context.watch<CookieRequest>();
+    final String userRole = request.jsonData['role'] ?? '';
+    bool isRunner = userRole.toLowerCase() == 'runner';
 
     String username = "";
-      try {
-        username = context.watch<UserProvider>().username;
-      } catch (e) {
-        // Fallback jika provider error/belum ada
-        username = "Guest"; 
-      }
+    try {
+      username = context.watch<UserProvider>().username;
+    } catch (e) {
+      // Fallback jika provider error/belum ada
+      username = "Guest";
+    }
 
     return Drawer(
       child: Column(
@@ -36,14 +40,17 @@ class LeftDrawer extends StatelessWidget {
                   decoration: BoxDecoration(color: Color(0xFF1D4ED8)),
                   child: Column(
                     children: [
+                      SizedBox(height: 16),
                       Text(
-                        'Spot Runner',
+                        "SpotRunner",
                         style: TextStyle(
-                          fontSize: 30,
-                          fontWeight: FontWeight.bold,
+                          fontFamily: 'Inter',
+                          fontStyle: FontStyle.italic,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 26,
+                          letterSpacing: -0.03,
                           color: Colors.white,
                         ),
-                        textAlign: TextAlign.center,
                       ),
                       Padding(padding: EdgeInsets.all(10)),
                       Text(
@@ -66,22 +73,32 @@ class LeftDrawer extends StatelessWidget {
                     );
                   },
                 ),
-                ListTile(
-                  leading: const Icon(Icons.dashboard),
-                  title: const Text('Dashboard'),
-                  onTap: () {
-                    // TODO: Navigate ke Dashboard
-                    Navigator.push(context, MaterialPageRoute(builder: (context) => EventListPage()));
-                  },
-                ),
+                if (!isRunner)
+                  ListTile(
+                    leading: const Icon(Icons.dashboard),
+                    title: const Text('Dashboard'),
+                    onTap: () {
+                      // Dashboard sekarang fetch data sendiri
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const DashboardScreen(),
+                        ),
+                      );
+                    },
+                  ),
                 ListTile(
                   leading: const Icon(Icons.account_box),
                   title: const Text('Profile'),
                   onTap: () {
-                    // TODO: Navigate ke Profile
+                    // Navigate to role-specific profile page
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => RunnerProfilePage(username: username)),
+                      MaterialPageRoute(
+                        builder: (context) => isRunner
+                            ? RunnerProfilePage(username: username)
+                            : const ProfileScreen(),
+                      ),
                     );
                   },
                 ),
@@ -90,7 +107,12 @@ class LeftDrawer extends StatelessWidget {
                   title: const Text('Merchandise'),
                   onTap: () {
                     // TODO: Navigate ke Merchandise
-                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => MerchandisePage(),
+                      ),
+                    );
                   },
                 ),
               ],
@@ -108,9 +130,7 @@ class LeftDrawer extends StatelessWidget {
               style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
             ),
             onTap: () async {
-              final response = await request.logout(
-                "http://localhost:8000/auth/logout/",
-              );
+              final response = await request.logout(ApiConfig.logout);
               String message = response["message"];
               if (context.mounted) {
                 if (response['status']) {

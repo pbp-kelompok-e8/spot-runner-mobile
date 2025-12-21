@@ -51,46 +51,53 @@ class _ReviewModalState extends State<ReviewModal> {
   }
 
   Future<void> _handleSubmit() async {
-    setState(() {
-      _errorMessage = null;
-      _isSubmitting = true;
-    });
+  setState(() {
+    _errorMessage = null;
+    _isSubmitting = true;
+  });
 
-    if (_formKey.currentState!.validate()) {
-      final rating = int.parse(_ratingController.text);
-      final reviewText = _reviewController.text.trim();
+  if (_formKey.currentState!.validate()) {
+    final rating = int.parse(_ratingController.text);
+    final reviewText = _reviewController.text.trim();
 
-      // Validasi tambahan
-      if (rating < 1 || rating > 5) {
+    // Validasi tambahan
+    if (rating < 1 || rating > 5) {
+      if (mounted) {
         setState(() {
           _errorMessage = 'Rating must be between 1 and 5';
           _isSubmitting = false;
         });
-        return;
       }
+      return;
+    }
 
-      try {
-        // Panggil callback
-        await widget.onSubmit(rating, reviewText);
-        
-        if (mounted) {
-          // Close dialog with true result to indicate success
-          Navigator.of(context).pop(true);
-        }
-      } catch (e) {
-        if (mounted) {
-          setState(() {
-            _errorMessage = 'Failed to submit review';
-            _isSubmitting = false;
-          });
-        }
+    try {
+      // Panggil callback
+      await widget.onSubmit(rating, reviewText);
+      
+      // JANGAN tampilkan error, langsung close
+      // Close dialog HANYA jika widget masih mounted
+      if (mounted) {
+        Navigator.of(context).pop(true);
       }
-    } else {
+    } catch (e) {
+      print("Error in _handleSubmit: $e");
+      // Hanya tampilkan error jika benar-benar gagal
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Failed to submit review: ${e.toString()}';
+          _isSubmitting = false;
+        });
+      }
+    }
+  } else {
+    if (mounted) {
       setState(() {
         _isSubmitting = false;
       });
     }
   }
+}
 
   @override
   Widget build(BuildContext context) {

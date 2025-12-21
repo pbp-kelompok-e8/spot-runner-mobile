@@ -4,6 +4,7 @@ import 'package:pbp_django_auth/pbp_django_auth.dart';
 import 'package:provider/provider.dart';
 import 'package:spot_runner_mobile/features/auth/screens/register.dart';
 import 'package:spot_runner_mobile/core/providers/user_provider.dart';
+import 'package:spot_runner_mobile/core/config/api_config.dart';
 
 void main() {
   runApp(const LoginApp());
@@ -159,7 +160,7 @@ class _LoginPageState extends State<LoginPage> {
                           String password = _passwordController.text;
 
                           final response = await request.login(
-                              "http://localhost:8000/auth/login/", {
+                              ApiConfig.login, {
                             'username': username,
                             'password': password,
                           });

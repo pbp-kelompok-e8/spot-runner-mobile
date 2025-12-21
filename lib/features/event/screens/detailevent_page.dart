@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'dart:async';
 import 'package:provider/provider.dart';
 import 'package:pbp_django_auth/pbp_django_auth.dart';
+import 'package:spot_runner_mobile/features/event/screens/dashboard_screen.dart';
 import 'package:spot_runner_mobile/features/event/screens/editevent_form.dart';
 import 'package:spot_runner_mobile/features/event/screens/testpage.dart';
 import 'package:spot_runner_mobile/core/config/api_config.dart'; 
@@ -12,7 +13,7 @@ import 'package:spot_runner_mobile/features/review/screens/review_modal.dart';
 import 'package:spot_runner_mobile/features/review/service/review_service.dart';
 import 'package:spot_runner_mobile/core/models/review_entry.dart';
 import 'dart:convert';
-import 'package:flutter/foundation.dart' show kIsWeb;
+// import 'package:flutter/foundation.dart' show kIsWeb;
 
 class EventDetailPage extends StatefulWidget {
   final String eventId;
@@ -55,26 +56,37 @@ class _EventDetailPageState extends State<EventDetailPage> {
   }
 
   Future<void> _loadReviews() async {
-    final request = context.read<CookieRequest>();
-    try {
-      final reviewEntry = await ReviewService.getAllReviews(
-        request,
-        eventId: widget.eventId,
-      );
-      
-      if (mounted && reviewEntry != null) {
-        setState(() {
-          _reviews = reviewEntry.data;
-          _isLoadingReviews = false;
-        });
-      }
-    } catch (e) {
-      print("Error loading reviews: $e");
-      if (mounted) {
-        setState(() => _isLoadingReviews = false);
-      }
+  print("🔄 Loading reviews...");
+  
+  if (!mounted) return;
+  
+  final request = context.read<CookieRequest>();
+  
+  try {
+    final reviewEntry = await ReviewService.getAllReviews(
+      request,
+      eventId: widget.eventId,
+    );
+    
+    print("📦 Received ${reviewEntry?.data.length ?? 0} reviews");
+    
+    if (mounted) {
+      setState(() {
+        _reviews = reviewEntry?.data ?? [];
+        _isLoadingReviews = false;
+      });
+      print("✅ Reviews updated in UI");
+    }
+  } catch (e) {
+    print("❌ Error loading reviews: $e");
+    if (mounted) {
+      setState(() {
+        _reviews = [];
+        _isLoadingReviews = false;
+      });
     }
   }
+}
 
   Future<Map<String, dynamic>> fetchEventDetail() async {
     final request = context.read<CookieRequest>();
@@ -92,7 +104,7 @@ class _EventDetailPageState extends State<EventDetailPage> {
     final request = context.read<CookieRequest>();
     try {
       final response = await request.get(
-        'http://localhost:8000/event-organizer/json/',
+        ApiConfig.eventOrganizerJson(),
       );
       if (response['status'] == 'success') {
         List<dynamic> organizers = response['data'];
@@ -132,14 +144,8 @@ class _EventDetailPageState extends State<EventDetailPage> {
         return;
     }
 
-    // Tentukan Base URL (Localhost vs Emulator)
-    String baseUrl = "http://10.0.2.2:8000";
-    if (kIsWeb) {
-      baseUrl = "http://localhost:8000";
-    }
-
     // URL: /api/participate/<username>/<event_id>/<category>/
-    final url = "$baseUrl/api/participate/$username/${widget.eventId}/$_selectedCategory/";
+    final url = ApiConfig.participateUrl(username, widget.eventId, _selectedCategory!);
 
     try {
       // Panggil API (POST)
@@ -208,8 +214,11 @@ class _EventDetailPageState extends State<EventDetailPage> {
               backgroundColor: Colors.green,
             ),
           );
-            Navigator.pop(context, true
-          );
+            Navigator.pushReplacement(
+              context, MaterialPageRoute(
+                builder: (context) => DashboardScreen(),
+              ),
+            );
         }
       } else {
         if (mounted) {
@@ -231,99 +240,84 @@ class _EventDetailPageState extends State<EventDetailPage> {
   }
 
   Future<void> _handleEditReview(Datum review) async {
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (context) => ReviewModal(
-        eventName: review.eventName,
-        eventId: review.eventId,
-        reviewId: review.id,
-        initialRating: review.rating,
-        initialReview: review.reviewText,
-        onSubmit: (rating, reviewText) async {
-          await _submitEditReview(review.id, rating, reviewText);
-        },
-      ),
-    );
-
-    if (result == true) {
-      _loadReviews();
-    }
-  }
-
-  Future<void> _submitEditReview(String reviewId, int rating, String reviewText) async {
-    final request = context.read<CookieRequest>();
-    
-    try {
-      final response = await ReviewService.editReview(
-        request,
-        reviewId: reviewId,
-        rating: rating,
-        reviewText: reviewText,
-      );
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(response['message']),
-            backgroundColor: response['success'] ? Colors.green : Colors.red,
-          ),
+  final result = await showDialog<bool>(
+    context: context,
+    builder: (context) => ReviewModal(
+      eventName: review.eventName,
+      eventId: review.eventId,
+      reviewId: review.id,
+      initialRating: review.rating,
+      initialReview: review.reviewText,
+      onSubmit: (rating, reviewText) async {
+        final request = context.read<CookieRequest>();
+        final response = await ReviewService.editReview(
+          request,
+          reviewId: review.id,
+          rating: rating,
+          reviewText: reviewText,
         );
-
-        if (response['success']) {
-          Navigator.pop(context, true);
-          _loadReviews();
+        
+        if (!response['success']) {
+          throw Exception(response['message']);
         }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("Error: $e"),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
+      },
+    ),
+  );
+
+  if (!mounted || result != true) return;
+
+  await _loadReviews();
+
+  if (!mounted) return;
+
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(
+      content: Text('Review updated successfully'),
+      backgroundColor: Colors.green,
+    ),
+  );
+}
+
+Future<void> _handleDeleteReview(String reviewId) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Delete Review'),
+      content: const Text('Are you sure you want to delete this review?'),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(context, true),
+          style: TextButton.styleFrom(foregroundColor: Colors.red),
+          child: const Text('Delete'),
+        ),
+      ],
+    ),
+  );
+
+  if (!mounted || confirmed != true) return;
+
+  final request = context.read<CookieRequest>();
+  final response = await ReviewService.deleteReview(request, reviewId);
+
+  if (!mounted) return;
+
+  if (response['success']) {
+    await _loadReviews();
+
+    if (!mounted) return;
   }
 
-  Future<void> _handleDeleteReview(String reviewId) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Review'),
-        content: const Text('Are you sure you want to delete this review?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true) {
-      final request = context.read<CookieRequest>();
-      final response = await ReviewService.deleteReview(request, reviewId);
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(response['message']),
-            backgroundColor: response['success'] ? Colors.green : Colors.red,
-          ),
-        );
-
-        if (response['success']) {
-          _loadReviews();
-        }
-      }
-    }
-  }
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(response['message']),
+      backgroundColor: response['success'] ? Colors.green : Colors.red,
+    ),
+  );
+}
 
   @override
   Widget build(BuildContext context) {
