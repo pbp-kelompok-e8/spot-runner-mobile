@@ -47,6 +47,10 @@ class ApiConfig {
   static String deleteEventUrl(String id) => '$baseUrl/event/delete-flutter/$id/';
   static String eventList() => '$baseUrl/event/json/';
 
+  /// Generic API endpoints (used by Dashboard and current-user flows)
+  static String get profile => '$baseUrl/api/profile/';
+  static String get events => '$baseUrl/api/events/';
+
   /// Event Organizer specific
   static String eventOrganizerProfile() => '$baseUrl/event-organizer/profile/json/';
   static String eventOrganizerJson() => '$baseUrl/event-organizer/json/';

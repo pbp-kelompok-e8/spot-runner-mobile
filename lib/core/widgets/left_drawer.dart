@@ -12,6 +12,8 @@ import 'package:spot_runner_mobile/features/event/screens/testpage.dart';
 import 'package:spot_runner_mobile/features/event/screens/profile_screen.dart';
 import 'package:spot_runner_mobile/features/merchandise/screens/merchandise_page.dart';
 import 'package:spot_runner_mobile/core/config/api_config.dart';
+import 'package:spot_runner_mobile/core/models/event_entry.dart';
+import 'package:spot_runner_mobile/core/models/user_entry.dart';
 
 class LeftDrawer extends StatelessWidget {
   const LeftDrawer({super.key});
@@ -78,12 +80,46 @@ class LeftDrawer extends StatelessWidget {
                   ListTile(
                     leading: const Icon(Icons.dashboard),
                     title: const Text('Dashboard'),
-                    onTap: () {
-                      // Event Organizer dashboard
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const DashboardScreen(userProfile: null, events: [])),
-                      );
+                    onTap: () async {
+                      // Event Organizer dashboard: fetch profile and events first
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Loading dashboard...')));
+                      }
+
+                      UserProfile? userProfile;
+                      List<EventEntry> events = [];
+
+                      try {
+                        final profileResp = await request.get(ApiConfig.profile);
+                        if (profileResp is Map<String, dynamic>) {
+                          userProfile = UserProfile.fromJson(profileResp);
+                        } else if (profileResp is List && profileResp.isNotEmpty) {
+                          final first = profileResp.first;
+                          if (first is Map<String, dynamic>) userProfile = UserProfile.fromJson(first);
+                        }
+                      } catch (e) {
+                        // ignore and continue with null profile
+                        userProfile = null;
+                      }
+
+                      try {
+                        final eventsResp = await request.get(ApiConfig.events);
+                        if (eventsResp is List) {
+                          events = eventsResp.map((e) => EventEntry.fromJson(Map<String, dynamic>.from(e))).toList();
+                        } else if (eventsResp is Map && eventsResp['results'] is List) {
+                          events = List<EventEntry>.from((eventsResp['results'] as List).map(
+                              (e) => EventEntry.fromJson(Map<String, dynamic>.from(e as Map<String, dynamic>))));
+                        }
+                      } catch (e) {
+                        events = [];
+                      }
+
+                      if (context.mounted) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => DashboardScreen(userProfile: userProfile, events: events)),
+                        );
+                      }
                     },
                   ),
                 ListTile(
