@@ -92,7 +92,7 @@ class _EventDetailPageState extends State<EventDetailPage> {
     final request = context.read<CookieRequest>();
     try {
       final response = await request.get(
-        'http://localhost:8000/event-organizer/json/',
+        ApiConfig.eventOrganizerJson(),
       );
       if (response['status'] == 'success') {
         List<dynamic> organizers = response['data'];
@@ -132,14 +132,8 @@ class _EventDetailPageState extends State<EventDetailPage> {
         return;
     }
 
-    // Tentukan Base URL (Localhost vs Emulator)
-    String baseUrl = "http://10.0.2.2:8000";
-    if (kIsWeb) {
-      baseUrl = "http://localhost:8000";
-    }
-
     // URL: /api/participate/<username>/<event_id>/<category>/
-    final url = "$baseUrl/api/participate/$username/${widget.eventId}/$_selectedCategory/";
+    final url = ApiConfig.participateUrl(username, widget.eventId, _selectedCategory!);
 
     try {
       // Panggil API (POST)

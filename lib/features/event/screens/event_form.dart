@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:spot_runner_mobile/core/widgets/left_drawer.dart';
 import 'package:spot_runner_mobile/features/event/screens/testpage.dart';
+import 'package:spot_runner_mobile/core/config/api_config.dart';
 import 'package:provider/provider.dart';
 import 'package:pbp_django_auth/pbp_django_auth.dart';
 
@@ -568,7 +569,7 @@ class _EventFormPageState extends State<EventFormPage> {
                         );
                         try {
                           final response = await request.postJson(
-                            'http://localhost:8000/event/create-flutter/',
+                            ApiConfig.createEvent,
                             jsonEncode({
                               "name": _eventName,
                               "description": _description,

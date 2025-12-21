@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:pbp_django_auth/pbp_django_auth.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:spot_runner_mobile/core/config/api_config.dart';
 
 class ChangePasswordPage extends StatefulWidget {
   const ChangePasswordPage({super.key});
@@ -33,15 +33,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
 
     final request = context.read<CookieRequest>();
     
-    // Logika URL Otomatis (Web vs Android Emulator)
-    String baseUrl;
-    if (kIsWeb) {
-      baseUrl = "http://localhost:8000";
-    } else {
-      baseUrl = "http://10.0.2.2:8000"; 
-    }
-    
-    final url = "$baseUrl/api/change-password/";
+    final url = ApiConfig.changePassword();
 
     try {
       final response = await request.postJson(

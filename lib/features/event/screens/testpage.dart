@@ -9,6 +9,7 @@ import 'package:spot_runner_mobile/features/event/screens/event_form.dart';
 import 'package:spot_runner_mobile/features/event/screens/detailevent_page.dart';
 import 'package:spot_runner_mobile/features/review/screens/review_modal.dart';
 import 'package:spot_runner_mobile/features/review/service/review_service.dart';
+import 'package:spot_runner_mobile/core/config/api_config.dart';
 
 class EventListPage extends StatefulWidget {
   const EventListPage({super.key});
@@ -19,7 +20,7 @@ class EventListPage extends StatefulWidget {
 
 class _EventListPageState extends State<EventListPage> {
   Future<List<dynamic>> fetchEvents() async {
-    var url = Uri.parse('http://localhost:8000/event/json/'); 
+    var url = Uri.parse(ApiConfig.eventJson); 
     var response = await http.get(
       url,
       headers: {"Content-Type": "application/json"},
@@ -286,7 +287,7 @@ class _EventListPageState extends State<EventListPage> {
   }
 
   Future<void> _deleteEvent(String id) async {
-    final Uri url = Uri.parse('http://localhost:8000/event/delete-flutter/$id/');
+    final Uri url = Uri.parse(ApiConfig.deleteEventUrl(id));
     
     try {
       final response = await http.post(

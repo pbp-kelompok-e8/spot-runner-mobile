@@ -6,7 +6,7 @@ import 'package:spot_runner_mobile/features/auth/screens/change_password.dart';
 import 'package:spot_runner_mobile/core/screens/menu.dart';
 import 'package:intl/intl.dart';
 import 'dart:convert';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:spot_runner_mobile/core/config/api_config.dart';
 import 'package:spot_runner_mobile/features/auth/screens/edit_profile.dart'; // Sesuaikan path jika beda
 import 'package:spot_runner_mobile/core/providers/user_provider.dart';
 
@@ -41,12 +41,7 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
   Future<void> _fetchProfileData() async {
     final request = context.read<CookieRequest>();
     try {
-      String baseUrl = "http://10.0.2.2:8000";
-      if (kIsWeb) {
-        baseUrl = "http://localhost:8000";
-      }
-      
-      final response = await request.get('$baseUrl/$_currentUsername/json');
+      final response = await request.get(ApiConfig.userProfile(_currentUsername));
       
       if (mounted) {
         setState(() {
@@ -233,11 +228,10 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
                                 setState(() => isSaving = true);
                                 
                                 final request = context.read<CookieRequest>();
-                                String baseUrl = kIsWeb ? "http://localhost:8000" : "http://10.0.2.2:8000";
                                 
                                 try {
                                   final response = await request.postJson(
-                                    "$baseUrl/api/edit-profile/",
+                                    ApiConfig.editProfile(),
                                     jsonEncode({
                                       "username": usernameController.text,
                                       "base_location": selectedLocation
@@ -297,10 +291,9 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
 
   Future<void> _handleLogout() async {
     final request = context.read<CookieRequest>();
-    String baseUrl = kIsWeb ? "http://localhost:8000" : "http://10.0.2.2:8000";
 
     try {
-      final response = await request.logout("$baseUrl/auth/logout/");
+      final response = await request.logout(ApiConfig.logout);
       if (context.mounted) {
         if (response['status'] == true) {
             Navigator.pushReplacement(
@@ -363,8 +356,7 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
                     }
                     setState(() { isLoading = true; errorMessage = null; });
 
-                    String baseUrl = kIsWeb ? "http://localhost:8000" : "http://10.0.2.2:8000";
-                    final url = "$baseUrl/api/delete-account/";
+                    final url = ApiConfig.deleteAccount();
 
                     try {
                       final response = await request.postJson(url, jsonEncode({'password': passwordController.text}));
@@ -903,9 +895,8 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
 
   Future<void> _handleCancelEvent(String? eventId) async {
       final request = context.read<CookieRequest>();
-      String baseUrl = kIsWeb ? "http://localhost:8000" : "http://10.0.2.2:8000";
       try {
-        final response = await request.post("$baseUrl/api/cancel/${widget.username}/$eventId/", {});
+        final response = await request.post(ApiConfig.cancelParticipation(widget.username, eventId!), {});
         if (mounted && response['status'] == 'success') {
             ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(response['message']), backgroundColor: Colors.green));
             _fetchProfileData(); 

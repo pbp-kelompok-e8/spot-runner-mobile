@@ -92,9 +92,8 @@ class DashboardScreen extends StatelessWidget {
     final String baseLocation = (user.details?.baseLocation == null || user.details!.baseLocation.isEmpty) 
                                 ? "Location not set" 
                                 : user.details!.baseLocation;
-    
-    // Karena di model UserProfile Anda tidak ada field 'joined', 
-    // kita gunakan tanggal hari ini atau placeholder tetap jika tidak ada dari API.
+     
+    // gunakan tanggal hari ini atau placeholder tetap jika tidak ada dari API.
     final String joinedDate = DateFormat('dd MMM yyyy').format(DateTime.now()); 
 
     return Container(
@@ -233,14 +232,12 @@ class DashboardScreen extends StatelessWidget {
   }
 }
 
-// EventCard tetap menggunakan logika yang sama namun dengan penanganan data null yang lebih baik
 class EventCard extends StatelessWidget {
   final EventEntry event;
   const EventCard({Key? key, required this.event}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    // ... logika penentuan warna status sama seperti kode Anda ...
     final String statusLower = event.eventStatus.toLowerCase().replaceAll("_", " ");
     
     return Container(

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:pbp_django_auth/pbp_django_auth.dart';
 import 'package:intl/intl.dart';
+import 'package:spot_runner_mobile/core/config/api_config.dart';
 
 class EOProfilePage extends StatefulWidget {
   final String? eoId; // null = current user, ada value = view other EO
@@ -33,7 +34,7 @@ class _EOProfilePageState extends State<EOProfilePage> {
       // Get EO data
       String eoIdToFetch = widget.eoId ?? request.jsonData['user_id'].toString();
       
-      final eoResponse = await request.get('http://localhost:8000/event-organizer/json/');
+      final eoResponse = await request.get(ApiConfig.eventOrganizerJson());
       if (eoResponse['status'] == 'success') {
         List<dynamic> organizers = eoResponse['data'];
         var foundEO = organizers.firstWhere(
@@ -69,7 +70,7 @@ class _EOProfilePageState extends State<EOProfilePage> {
     final request = context.read<CookieRequest>();
     
     try {
-      final response = await request.get('http://localhost:8000/event/json/');
+      final response = await request.get(ApiConfig.eventJson);
       
       if (response is List) {
         setState(() {
@@ -95,7 +96,7 @@ class _EOProfilePageState extends State<EOProfilePage> {
     for (var event in _events) {
       try {
         final reviewResponse = await request.get(
-          'http://localhost:8000/review/api/reviews/?event_id=${event['id']}',
+          ApiConfig.reviewsByEvent(event['id'].toString()),
         );
         
         if (reviewResponse['status'] == 'success' && reviewResponse['data'] != null) {

@@ -10,6 +10,7 @@ import 'package:spot_runner_mobile/core/providers/user_provider.dart';
 import 'package:spot_runner_mobile/features/event/screens/dashboard_screen.dart';
 import 'package:spot_runner_mobile/features/event/screens/testpage.dart';
 import 'package:spot_runner_mobile/features/merchandise/screens/merchandise_page.dart';
+import 'package:spot_runner_mobile/core/config/api_config.dart';
 
 class LeftDrawer extends StatelessWidget {
   const LeftDrawer({super.key});
@@ -124,7 +125,7 @@ class LeftDrawer extends StatelessWidget {
             ),
             onTap: () async {
               final response = await request.logout(
-                "http://localhost:8000/auth/logout/",
+                ApiConfig.logout,
               );
               String message = response["message"];
               if (context.mounted) {
