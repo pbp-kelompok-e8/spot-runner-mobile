@@ -19,4 +19,29 @@ class ApiConfig {
   static String editReview(String reviewId) => '$baseUrl/review/$reviewId/edit/';
   static String deleteReview(String reviewId) => '$baseUrl/review/$reviewId/delete/';
 
+  static const String merchandiseJson = '$baseUrl/merchandise/json/';
+  static const String userCoins = '$baseUrl/merchandise/user-coins/';
+  static const String redeemMerchandise = '$baseUrl/merchandise/redemption/json/';
+  static const String merchandiseHistory = '$baseUrl/merchandise/history-json/';
+  static const String createMerchandise = '$baseUrl/merchandise/create-flutter/';
+  static const String editMerchandise = '$baseUrl/merchandise/edit-flutter/';
+  static const String deleteMerchandise = '$baseUrl/merchandise/delete-flutter/';
+
+  static String merchandiseDetail(String id) => '$baseUrl/merchandise/json/$id/';
+  static String editMerchandiseUrl(String id) => '$baseUrl/merchandise/edit-flutter/$id/';
+  static String deleteMerchandiseUrl(String id) => '$baseUrl/merchandise/delete-flutter/$id/';
+  static String redeemMerchandiseUrl(String id) => '$baseUrl/merchandise/$id/redeem/';
+  static String proxyImage(String encodedUrl) => '$baseUrl/merchandise/proxy-image/?url=$encodedUrl';
+
+  // Event endpoints
+  static const String eventJson = '$baseUrl/event/json/';
+  static const String createEvent = '$baseUrl/event/create-flutter/';
+  static const String editEvent = '$baseUrl/event/edit-flutter/';
+  static const String deleteEvent = '$baseUrl/event/delete-flutter/';
+
+  static String eventDetail(String id) => '$baseUrl/event/json/$id/';
+  static String editEventUrl(String id) => '$baseUrl/event/edit-flutter/$id/';
+  static String deleteEventUrl(String id) => '$baseUrl/event/delete-flutter/$id/';
+  static String eventList() => '$baseUrl/event/json/';
+  
 }

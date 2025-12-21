@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:pbp_django_auth/pbp_django_auth.dart';
 import 'package:provider/provider.dart';
 import 'package:spot_runner_mobile/features/auth/screens/register.dart';
+import 'package:spot_runner_mobile/core/providers/user_provider.dart';
 
 void main() {
   runApp(const LoginApp());
@@ -166,6 +167,9 @@ class _LoginPageState extends State<LoginPage> {
                           if (request.loggedIn) {
                             String message = response['message'];
                             String uname = response['username'];
+
+                            context.read<UserProvider>().setUsername(uname);
+
                             if (context.mounted) {
                               Navigator.pushReplacement(
                                 context,
@@ -194,7 +198,7 @@ class _LoginPageState extends State<LoginPage> {
                                 } 
                                 // Jika error spesifik (misal "Akun dinonaktifkan")
                                 else if (message.toLowerCase().contains('akun') || message.toLowerCase().contains('account')) {
-                                   _usernameError = message;
+                                    _usernameError = message;
                                 }
                                 // Fallback error
                                 else {

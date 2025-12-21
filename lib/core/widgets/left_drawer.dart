@@ -1,9 +1,13 @@
-//lib\core\widgets\left_drawer.dart
+import 'dart:convert'; // Diperlukan untuk jsonEncode
 import 'package:flutter/material.dart';
 import 'package:spot_runner_mobile/core/screens/menu.dart';
 import 'package:spot_runner_mobile/features/auth/screens/login.dart';
+import 'package:spot_runner_mobile/features/auth/screens/profile.dart';
 import 'package:pbp_django_auth/pbp_django_auth.dart';
 import 'package:provider/provider.dart';
+// import 'package:spot_runner_mobile/features/event/screens/testpage.dart';
+import 'package:spot_runner_mobile/core/providers/user_provider.dart';
+import 'package:spot_runner_mobile/features/event/screens/dashboard_screen.dart';
 import 'package:spot_runner_mobile/features/event/screens/testpage.dart';
 
 class LeftDrawer extends StatelessWidget {
@@ -12,6 +16,14 @@ class LeftDrawer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final request = context.watch<CookieRequest>();
+
+    String username = "";
+      try {
+        username = context.watch<UserProvider>().username;
+      } catch (e) {
+        // Fallback jika provider error/belum ada
+        username = "Guest"; 
+      }
 
     return Drawer(
       child: Column(
@@ -59,7 +71,7 @@ class LeftDrawer extends StatelessWidget {
                   title: const Text('Dashboard'),
                   onTap: () {
                     // TODO: Navigate ke Dashboard
-                    Navigator.push(context, MaterialPageRoute(builder: (context) => EventListPage() ));
+                    Navigator.push(context, MaterialPageRoute(builder: (context) => EventListPage()));
                   },
                 ),
                 ListTile(
@@ -67,7 +79,10 @@ class LeftDrawer extends StatelessWidget {
                   title: const Text('Profile'),
                   onTap: () {
                     // TODO: Navigate ke Profile
-                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => RunnerProfilePage(username: username)),
+                    );
                   },
                 ),
                 ListTile(

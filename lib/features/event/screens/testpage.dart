@@ -18,6 +18,16 @@ class EventListPage extends StatefulWidget {
 }
 
 class _EventListPageState extends State<EventListPage> {
+  // State untuk menyimpan review status
+  Map<String, bool> _userReviewStatus = {};
+  bool _isLoadingReviews = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkUserReviews();
+  }
+
   Future<List<dynamic>> fetchEvents() async {
     var url = Uri.parse('http://localhost:8000/event/json/'); 
     var response = await http.get(
@@ -31,6 +41,59 @@ class _EventListPageState extends State<EventListPage> {
     } else {
       throw Exception('Failed to fetch events');
     }
+  }
+
+  // Method untuk cek review status user
+  Future<void> _checkUserReviews() async {
+    final request = context.read<CookieRequest>();
+    
+    if (!request.loggedIn) {
+      print('❌ User not logged in');
+      return;
+    }
+    
+    setState(() {
+      _isLoadingReviews = true;
+    });
+
+    try {
+      print('🔄 Fetching user reviews...');
+      
+      // Get all reviews dari user ini
+      final reviewEntry = await ReviewService.getAllReviews(request);
+      
+      print('📦 Got ${reviewEntry?.data.length ?? 0} reviews');
+      
+      // Build map: eventId -> hasReviewed
+      final Map<String, bool> statusMap = {};
+      for (var review in reviewEntry?.data ?? []) {
+        print('✅ Review found for event: ${review.eventId}');
+        statusMap[review.eventId] = true;
+      }
+      
+      print('📊 Review status map: $statusMap');
+      
+      if (mounted) {
+        setState(() {
+          _userReviewStatus = statusMap;
+          _isLoadingReviews = false;
+        });
+        print('✅ Review status updated in UI');
+      }
+    } catch (e) {
+      print('❌ Error checking reviews: $e');
+      if (mounted) {
+        setState(() {
+          _userReviewStatus = {}; // Reset ke empty map
+          _isLoadingReviews = false;
+        });
+      }
+    }
+  }
+
+  // Method untuk cek apakah user sudah review event tertentu
+  bool _hasUserReviewedEvent(String eventId) {
+    return _userReviewStatus[eventId] == true;
   }
 
   Future<void> _handleAddReview(BuildContext context, Map<String, dynamic> event) async {
@@ -55,8 +118,10 @@ class _EventListPageState extends State<EventListPage> {
       builder: (context) => ReviewModal(
         eventName: event['name'],
         eventId: event['id'].toString(),
+        reviewId: null, // null = mode create
+        initialRating: 5,
+        initialReview: '',
         onSubmit: (rating, reviewText) async {
-          // Submit review
           final response = await ReviewService.createReview(
             request,
             eventId: event['id'].toString(),
@@ -64,22 +129,27 @@ class _EventListPageState extends State<EventListPage> {
             reviewText: reviewText,
           );
 
-          if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(response['message']),
-                backgroundColor: response['success'] ? Colors.green : Colors.red,
-              ),
-            );
+          if (!response['success']) {
+            throw Exception(response['message']);
           }
         },
       ),
     );
 
-    // Refresh list if review was added
-    if (result == true && mounted) {
-      setState(() {});
-    }
+    if (!mounted || result != true) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Review submitted successfully'),
+        backgroundColor: Colors.green,
+      ),
+    );
+
+    // Refresh review status
+    await _checkUserReviews();
+    
+    // Refresh list
+    setState(() {});
   }
 
   @override
@@ -134,16 +204,22 @@ class _EventListPageState extends State<EventListPage> {
                   child: Column(
                     children: [
                       ListTile(
-                        onTap: () {
-                          Navigator.push(
+                        onTap: () async {
+                          final result = await Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (context) => EventDetailPage(eventId: event['id'].toString()),
                             ),
                           );
+                          // Refresh review status setelah kembali dari detail page
+                          if (result == true || result == null) {
+                            await _checkUserReviews();
+                            setState(() {});
+                          }
                         },
                         contentPadding: const EdgeInsets.all(16),
                         title: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Expanded(
                               child: Text(
@@ -169,7 +245,11 @@ class _EventListPageState extends State<EventListPage> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const SizedBox(height: 8),
-                            Text(event['description'], maxLines: 2, overflow: TextOverflow.ellipsis),
+                            Text(
+                              event['description'], 
+                              maxLines: 2, 
+                              overflow: TextOverflow.ellipsis
+                            ),
                             const SizedBox(height: 8),
                             Row(
                               children: [
@@ -227,26 +307,47 @@ class _EventListPageState extends State<EventListPage> {
                               )
                             : null,
                       ),
-                      
-                      // Add Review Button (only for runners on finished events)
+                      // Tombol Review
                       if (isRunner && isFinished && !isOwner)
                         Padding(
                           padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                           child: SizedBox(
                             width: double.infinity,
-                            child: ElevatedButton.icon(
-                              onPressed: () => _handleAddReview(context, event),
-                              icon: const Icon(Icons.rate_review, size: 18),
-                              label: const Text('Add Review'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFFA3E635),
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(vertical: 12),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                              ),
-                            ),
+                            child: _hasUserReviewedEvent(event['id'].toString())
+                                ? Container(
+                                    padding: const EdgeInsets.symmetric(vertical: 12),
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey[200],
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(Icons.check_circle, color: Colors.grey[600], size: 18),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          'Already Reviewed',
+                                          style: TextStyle(
+                                            color: Colors.grey[600],
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  )
+                                : ElevatedButton.icon(
+                                    onPressed: () => _handleAddReview(context, event),
+                                    icon: const Icon(Icons.rate_review, size: 18),
+                                    label: const Text('Add Review'),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFFA3E635),
+                                      foregroundColor: Colors.white,
+                                      padding: const EdgeInsets.symmetric(vertical: 12),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                    ),
+                                  ),
                           ),
                         ),
                     ],
