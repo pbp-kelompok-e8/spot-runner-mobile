@@ -10,8 +10,8 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:spot_runner_mobile/core/config/api_config.dart';
 import 'package:spot_runner_mobile/features/auth/screens/edit_profile.dart'; 
 import 'package:spot_runner_mobile/core/providers/user_provider.dart';
+import 'package:spot_runner_mobile/core/widgets/error_retry.dart'; // Import Widget Error
 
-// Import fitur review
 import 'package:spot_runner_mobile/features/review/screens/review_modal.dart';
 import 'package:spot_runner_mobile/features/review/service/review_service.dart';
 
@@ -26,12 +26,13 @@ class RunnerProfilePage extends StatefulWidget {
 class _RunnerProfilePageState extends State<RunnerProfilePage> {
   Map<String, dynamic>? _profileData;
   bool _isLoading = true;
+  bool _isConnectionError = false; // State untuk error koneksi
   late String _currentUsername;
 
   // --- COLORS ---
   final Color _primaryBlue = const Color(0xFF1447E6);
-  final Color _textDark = const Color(0xFF111827);
-  final Color _textGrey = const Color(0xFF6B7280);
+  final Color _textDark = const Color(0xFF393938);
+  final Color _textGrey = const Color(0xFF777675);
   final Color _limeGreen = const Color(0xFFA0E228); 
   final Color _starLime = const Color(0xFFCDFA5D);
 
@@ -45,6 +46,11 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
   }
 
   Future<void> _fetchProfileData() async {
+    setState(() {
+      _isLoading = true;
+      _isConnectionError = false;
+    });
+
     final request = context.read<CookieRequest>();
     try {
       final response = await request.get(ApiConfig.userProfile(_currentUsername));
@@ -63,8 +69,10 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _isLoading = false);
-        debugPrint("Error fetching profile: $e");
+        setState(() {
+          _isLoading = false;
+          _isConnectionError = true; // Set error koneksi
+        });
       }
     }
   }
@@ -92,7 +100,7 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
               reviewText: reviewText,
             );
 
-            if (mounted) Navigator.pop(context); // Tutup Loading
+            if (mounted) Navigator.pop(context);
 
             if (mounted) {
               bool isSuccess = (result['status'] == 'success') || (result['success'] == true);
@@ -109,7 +117,13 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
             }
           } catch (e) {
             if (mounted) Navigator.pop(context);
-            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+            // Retry Dialog untuk submit review
+            showErrorRetryDialog(
+              context: context,
+              title: "Connection Error",
+              message: "Failed to submit review. Check your connection.",
+              onRetry: () => _handleRateEvent(eventId, eventName), // Sedikit tricky, akan membuka modal lagi
+            );
           }
         },
       ),
@@ -149,6 +163,12 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
              }
            } catch (e) {
              if(mounted) Navigator.pop(context);
+             showErrorRetryDialog(
+                context: context,
+                title: "Connection Error",
+                message: "Failed to update review.",
+                onRetry: () async {}, // User harus klik edit lagi manual
+             );
            }
         },
       ),
@@ -190,6 +210,12 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
         }
       } catch(e) {
         if(mounted) Navigator.pop(context);
+        showErrorRetryDialog(
+          context: context,
+          title: "Connection Error",
+          message: "Failed to delete review.",
+          onRetry: () => _handleDeleteReview(reviewId),
+        );
       }
     }
   }
@@ -203,7 +229,16 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
           Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const LoginPage()));
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Logged out successfully!")));
       }
-    } catch (e) {}
+    } catch (e) {
+      if (mounted) {
+        showErrorRetryDialog(
+          context: context,
+          title: "Logout Failed",
+          message: "Could not log out. Check connection.",
+          onRetry: _handleLogout,
+        );
+      }
+    }
   }
 
   Future<void> _handleDeleteAccount() async {
@@ -227,17 +262,33 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () async {
               if (passwordController.text.isEmpty) return;
+              // Tutup dialog input password dulu
+              Navigator.pop(ctx);
+              
+              // Loading
+              showDialog(context: context, barrierDismissible: false, builder: (c) => const Center(child: CircularProgressIndicator()));
+
               try {
                 final response = await request.postJson(ApiConfig.deleteAccount(), jsonEncode({'password': passwordController.text}));
-                if (ctx.mounted) {
-                  Navigator.pop(ctx);
+                
+                if (mounted) Navigator.pop(context); // Tutup loading
+
+                if (mounted) {
                   if (response['status'] == 'success') {
                     Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const LoginPage()));
                   } else {
                     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(response['message'] ?? "Failed"), backgroundColor: Colors.red));
                   }
                 }
-              } catch (e) {}
+              } catch (e) {
+                if(mounted) Navigator.pop(context); // Tutup loading
+                showErrorRetryDialog(
+                  context: context,
+                  title: "Connection Error",
+                  message: "Failed to delete account.",
+                  onRetry: _handleDeleteAccount,
+                );
+              }
             },
             child: const Text('Delete', style: TextStyle(color: Colors.white)),
           ),
@@ -268,135 +319,6 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
 
   // ==================== WIDGETS UI ====================
 
-  // --- REVIEW ITEM CARD (KAROUSEL) ---
-  Widget _buildReviewItem(Map<String, dynamic> review) {
-    String reviewId = review['id']?.toString() ?? '';
-    String eventName = review['event']['name'] ?? 'Event';
-    String reviewText = review['review_text'] ?? '';
-    double rating = (review['rating'] ?? 0).toDouble();
-
-    return Container(
-      width: 300, // Lebar fixed agar carousel rapi
-      margin: const EdgeInsets.only(right: 16, bottom: 8, top: 4),
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.grey.shade200),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 15,
-            offset: const Offset(0, 4),
-          )
-        ],
-      ),
-      // Gunakan Stack untuk menumpuk tombol menu di atas konten
-      child: Stack(
-        children: [
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              const SizedBox(height: 12), // Spacer untuk menu
-              Text(
-                _currentUsername,
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: _textDark),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                "Participant $eventName",
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Colors.grey.shade400),
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 20),
-              
-              Expanded(
-                child: Center(
-                  child: Text(
-                    "\"$reviewText\"",
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 14, color: _textGrey, height: 1.5, fontStyle: FontStyle.italic),
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ),
-              
-              const SizedBox(height: 20),
-              Container(
-                padding: const EdgeInsets.only(top: 16),
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  border: Border(top: BorderSide(color: Colors.grey.shade100)),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.star, color: _starLime, size: 24),
-                    const SizedBox(width: 8),
-                    Text(
-                      rating.toString(),
-                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: _textDark),
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      "/5.0",
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Colors.grey.shade400),
-                    ),
-                  ],
-                ),
-              )
-            ],
-          ),
-          
-          // --- MENU TITIK TIGA DI POJOK KANAN ATAS ---
-          Positioned(
-            top: -10,
-            right: -10,
-            child: PopupMenuButton<String>(
-              icon: Icon(Icons.more_horiz, color: Colors.grey.shade400),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              onSelected: (value) {
-                if (value == 'edit') {
-                  _handleEditReview(review);
-                } else if (value == 'delete') {
-                  _handleDeleteReview(reviewId);
-                }
-              },
-              itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-                const PopupMenuItem<String>(
-                  value: 'edit',
-                  child: Row(
-                    children: [
-                      Icon(Icons.edit, size: 18, color: Colors.blue),
-                      SizedBox(width: 12),
-                      Text('Edit', style: TextStyle(fontSize: 14)),
-                    ],
-                  ),
-                ),
-                const PopupMenuItem<String>(
-                  value: 'delete',
-                  child: Row(
-                    children: [
-                      Icon(Icons.delete, size: 18, color: Colors.red),
-                      SizedBox(width: 12),
-                      Text('Delete', style: TextStyle(fontSize: 14, color: Colors.red)),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // --- WIDGET LAINNYA ---
   Widget _buildField(String label, String value) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -576,11 +498,162 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(response['message'] ?? "Status updated"), backgroundColor: response['status'] == 'success' ? Colors.green : Colors.red));
         _fetchProfileData();
       }
-    } catch (e) {}
+    } catch (e) {
+      if (mounted) {
+        showErrorRetryDialog(
+          context: context,
+          title: "Connection Error",
+          message: "Failed to cancel booking.",
+          onRetry: () => _handleCancelEvent(eventId),
+        );
+      }
+    }
+  }
+
+  Widget _buildReviewItem(Map<String, dynamic> review) {
+    String reviewId = review['id']?.toString() ?? '';
+    String eventName = review['event']['name'] ?? 'Event';
+    String reviewText = review['review_text'] ?? '';
+    double rating = (review['rating'] ?? 0).toDouble();
+
+    return Container(
+      width: 300,
+      margin: const EdgeInsets.only(right: 16, bottom: 8, top: 4),
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.grey.shade200),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 15,
+            offset: const Offset(0, 4),
+          )
+        ],
+      ),
+      child: Stack(
+        children: [
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const SizedBox(height: 12),
+              Text(
+                _currentUsername,
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: _textDark),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                "Participant $eventName",
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Colors.grey.shade400),
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 20),
+              
+              Expanded(
+                child: Center(
+                  child: Text(
+                    "\"$reviewText\"",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 14, color: _textGrey, height: 1.5, fontStyle: FontStyle.italic),
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ),
+              
+              const SizedBox(height: 20),
+              Container(
+                padding: const EdgeInsets.only(top: 16),
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  border: Border(top: BorderSide(color: Colors.grey.shade100)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.star, color: _starLime, size: 24),
+                    const SizedBox(width: 8),
+                    Text(
+                      rating.toString(),
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: _textDark),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      "/5.0",
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Colors.grey.shade400),
+                    ),
+                  ],
+                ),
+              )
+            ],
+          ),
+          
+          Positioned(
+            top: -10,
+            right: -10,
+            child: PopupMenuButton<String>(
+              icon: Icon(Icons.more_horiz, color: Colors.grey.shade400),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              onSelected: (value) {
+                if (value == 'edit') {
+                  _handleEditReview(review);
+                } else if (value == 'delete') {
+                  _handleDeleteReview(reviewId);
+                }
+              },
+              itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                const PopupMenuItem<String>(
+                  value: 'edit',
+                  child: Row(
+                    children: [
+                      Icon(Icons.edit, size: 18, color: Colors.blue),
+                      SizedBox(width: 12),
+                      Text('Edit', style: TextStyle(fontSize: 14)),
+                    ],
+                  ),
+                ),
+                const PopupMenuItem<String>(
+                  value: 'delete',
+                  child: Row(
+                    children: [
+                      Icon(Icons.delete, size: 18, color: Colors.red),
+                      SizedBox(width: 12),
+                      Text('Delete', style: TextStyle(fontSize: 14, color: Colors.red)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_isConnectionError) {
+      return Scaffold(
+        backgroundColor: const Color(0xFFF9FAFB),
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          centerTitle: true,
+          leading: IconButton(icon: const Icon(Icons.arrow_back, color: Colors.black), onPressed: () => Navigator.pop(context)),
+          title: Text("SpotRunner", style: TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w700, fontStyle: FontStyle.italic, fontSize: 18, color: _primaryBlue)),
+        ),
+        body: ErrorRetryWidget(
+          message: "Unable to load profile. Please check your connection.",
+          onRetry: _fetchProfileData,
+        ),
+      );
+    }
+
     if (_isLoading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
     
     final userData = _profileData!;
@@ -628,7 +701,6 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
               const SizedBox(height: 40),
               Text("Your Reviews", style: TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w700, fontSize: 24, color: _textDark)),
               const SizedBox(height: 20),
-              
               if (reviewList.isEmpty)
                 Container(
                   width: double.infinity,
@@ -637,9 +709,8 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
                   child: const Center(child: Text("You haven't written any reviews yet.", style: TextStyle(fontFamily: 'Inter', fontSize: 14, color: Color(0xFF6B7280)))),
                 )
               else
-                // CAROUSEL REVIEW
                 SizedBox(
-                  height: 300, 
+                  height: 300,
                   child: ListView.builder(
                     scrollDirection: Axis.horizontal,
                     itemCount: reviewList.length,

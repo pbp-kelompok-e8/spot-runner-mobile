@@ -3,7 +3,7 @@
 class ApiConfig {
   /// Runtime-aware base URL (localhost for web, 10.0.2.2 for Android emulator)
   static const String baseUrl =
-      'http://localhost:8000';
+      'http://localhost:80009884565tro87456';
   // static String get baseUrl => kIsWeb ? 'http://localhost:8000' : 'http://10.0.2.2:8000';
 
   /// Auth
@@ -74,6 +74,7 @@ class ApiConfig {
   /// API helpers
   static String changePassword() => '$baseUrl/api/change-password/';
   static String editProfile() => '$baseUrl/api/edit-profile/';
+  static String editEOProfile() => '$baseUrl/event-organizer/edit-profile-flutter/';
   static String deleteAccount() => '$baseUrl/api/delete-account/';
   static String cancelParticipation(String username, String eventId) =>
       '$baseUrl/api/cancel/$username/$eventId/';
