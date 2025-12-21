@@ -3,7 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:spot_runner_mobile/core/models/event_entry.dart';
+import 'package:spot_runner_mobile/core/models/user_entry.dart';
 import 'package:spot_runner_mobile/core/widgets/left_drawer.dart';
+import 'package:spot_runner_mobile/features/event/screens/dashboard_screen.dart';
 import 'package:spot_runner_mobile/features/event/screens/testpage.dart';
 import 'package:spot_runner_mobile/core/config/api_config.dart';
 import 'package:provider/provider.dart';
@@ -230,7 +233,13 @@ class _EventFormPageState extends State<EventFormPage> {
                     children: const [
                       Icon(Icons.arrow_back_ios_new, size: 20),
                       SizedBox(width: 8),
-                      Text("Back", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      Text(
+                        "Back",
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -552,7 +561,6 @@ class _EventFormPageState extends State<EventFormPage> {
                     ),
                     onPressed: () async {
                       if (_selectedCategories.isEmpty) {
-                        // Tampilkan pesan error jika kosong
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
                             content: Text(
@@ -563,68 +571,124 @@ class _EventFormPageState extends State<EventFormPage> {
                         );
                         return;
                       }
-                      if (_formKey.currentState!.validate()) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Sending data...')),
-                        );
-                        try {
-                          final response = await request.postJson(
-                            ApiConfig.createEvent,
-                            jsonEncode({
-                              "name": _eventName,
-                              "description": _description,
-                              "location": _location,
-                              "image1": _image,
-                              "image2": _image2,
-                              "image3": _image3,
-                              "event_date": _eventDate.toIso8601String(),
-                              "regist_deadline": _registDeadline
-                                  .toIso8601String(),
-                              "contact": _contactPerson,
-                              "capacity": _totalParticipants,
-                              "coin": _coin,
-                              "total_participans": 0,
-                              "categories": _selectedCategories,
-                            }),
-                          );
 
-                          if (context.mounted) {
-                            if (response['status'] == 'success') {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text("Success! Event saved."),
-                                  backgroundColor: Colors.green,
-                                ),
-                              );
-                              // Navigator.pushReplacement(
-                              //   context,
-                              //   MaterialPageRoute(
-                              //     builder: (context) => const EventListPage(),
-                              //   ),
-                              // );
-                            } else {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    "Failed: ${response['message']}",
-                                  ),
-                                  backgroundColor: Colors.red,
-                                ),
-                              );
-                            }
-                          }
-                        } catch (e) {
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text("Error: $e"),
-                                backgroundColor: Colors.red,
-                              ),
+                      if (!_formKey.currentState!.validate()) return;
+
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Creating event...')),
+                      );
+
+                      try {
+                        final response = await request.postJson(
+                          ApiConfig.createEvent,
+                          jsonEncode({
+                            "name": _eventName,
+                            "description": _description,
+                            "location": _location,
+                            "image1": _image,
+                            "image2": _image2,
+                            "image3": _image3,
+                            "event_date": _eventDate.toIso8601String(),
+                            "regist_deadline": _registDeadline
+                                .toIso8601String(),
+                            "contact": _contactPerson,
+                            "capacity": _totalParticipants,
+                            "coin": _coin,
+                            "total_participans": 0,
+                            "categories": _selectedCategories,
+                          }),
+                        );
+
+                        if (!context.mounted) return;
+
+                        if (response['status'] != 'success') {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text("Failed: ${response['message']}"),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                          return;
+                        }
+
+                        // ================================
+                        // FETCH PROFILE & EVENTS (DASHBOARD STYLE)
+                        // ================================
+
+                        UserProfile? userProfile;
+                        List<EventEntry> events = [];
+
+                        try {
+                          final profileResp = await request.get(
+                            ApiConfig.profile,
+                          );
+                          if (profileResp is Map<String, dynamic>) {
+                            userProfile = UserProfile.fromJson(profileResp);
+                          } else if (profileResp is List &&
+                              profileResp.isNotEmpty) {
+                            userProfile = UserProfile.fromJson(
+                              Map<String, dynamic>.from(profileResp.first),
                             );
                           }
+                        } catch (_) {
+                          userProfile = null;
                         }
+
+                        try {
+                          final eventsResp = await request.get(
+                            ApiConfig.events,
+                          );
+                          if (eventsResp is List) {
+                            events = eventsResp
+                                .map(
+                                  (e) => EventEntry.fromJson(
+                                    Map<String, dynamic>.from(e),
+                                  ),
+                                )
+                                .toList();
+                          } else if (eventsResp is Map &&
+                              eventsResp['results'] is List) {
+                            events = (eventsResp['results'] as List)
+                                .map(
+                                  (e) => EventEntry.fromJson(
+                                    Map<String, dynamic>.from(e),
+                                  ),
+                                )
+                                .toList();
+                          }
+                        } catch (_) {
+                          events = [];
+                        }
+
+                        if (!context.mounted) return;
+
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text("Event created successfully."),
+                            backgroundColor: Colors.green,
+                          ),
+                        );
+
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => DashboardScreen(
+                              userProfile: userProfile,
+                              events: events,
+                            ),
+                          ),
+                        );
+                      } catch (e) {
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text("Error: $e"),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
                       }
                     },
+
                     child: const Text(
                       "Create Event",
                       style: TextStyle(
@@ -635,7 +699,7 @@ class _EventFormPageState extends State<EventFormPage> {
                   ),
                 ),
 
-                const SizedBox(height: 16), 
+                const SizedBox(height: 16),
                 SizedBox(
                   width: double.infinity,
                   height: 56,
