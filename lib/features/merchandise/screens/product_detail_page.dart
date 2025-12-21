@@ -5,6 +5,8 @@ import 'package:spot_runner_mobile/core/config/api_config.dart';
 import 'package:spot_runner_mobile/features/merchandise/models/merchandise_model.dart';
 import 'package:spot_runner_mobile/features/merchandise/screens/edit_product_page.dart';
 import 'package:spot_runner_mobile/features/merchandise/utils/image_helper.dart';
+import 'package:spot_runner_mobile/core/widgets/error_handler.dart';
+import 'package:spot_runner_mobile/core/widgets/error_retry.dart';
 import 'dart:convert';
 
 class ProductDetailPage extends StatefulWidget {
@@ -23,8 +25,6 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
   String userType = 'guest';
   int userCoins = 0;
   bool isOwner = false;
-
-  // Track semua perubahan (edit/delete/redeem)
   bool hasChanges = false;
 
   @override
@@ -34,15 +34,17 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
   }
 
   Future<void> fetchData() async {
+    if (!mounted) return;
+
+    setState(() => isLoading = true);
+
     final request = context.read<CookieRequest>();
 
     try {
-      // Fetch merchandise detail
       final merchResponse = await request.get(
         ApiConfig.merchandiseDetail(widget.merchandiseId),
       );
 
-      // Fetch user coins
       final userResponse = await request.get(ApiConfig.userCoins);
 
       if (mounted) {
@@ -60,6 +62,11 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
         setState(() {
           isLoading = false;
         });
+
+        context.read<ConnectivityProvider>().setError(
+          "Failed to load product details. Please check your connection.",
+          () => fetchData(),
+        );
       }
     }
   }
@@ -139,7 +146,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                   child: ElevatedButton(
                     onPressed: () => _confirmRedeem(),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Color(0xFFBBF451),
+                      backgroundColor: const Color(0xFFBBF451),
                       foregroundColor: Colors.black,
                       padding: const EdgeInsets.symmetric(vertical: 20),
                       shape: RoundedRectangleBorder(
@@ -167,9 +174,8 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     if (merchandise == null) return;
 
     final request = context.read<CookieRequest>();
-    Navigator.pop(context); // Close dialog
+    Navigator.pop(context);
 
-    // 'http://localhost:8000/merchandise/${widget.merchandiseId}/redeem/'
     try {
       final response = await request.postJson(
         ApiConfig.redeemMerchandiseUrl(widget.merchandiseId),
@@ -179,7 +185,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
       if (mounted) {
         if (response['success'] == true) {
           hasChanges = true;
-          await fetchData(); // Refresh data di detail page
+          await fetchData();
           _showSuccessDialog();
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -192,9 +198,22 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        final retry = await showErrorRetryDialog(
+          context: context,
+          title: 'Redemption Failed',
+          message:
+              'Failed to redeem merchandise. Please check your connection.',
+          onRetry: _confirmRedeem,
         );
+
+        if (retry == false) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Redemption cancelled'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
       }
     }
   }
@@ -216,10 +235,8 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                 children: [
                   IconButton(
                     icon: const Icon(Icons.close),
-                    // onPressed: () => Navigator.pop(context),
                     onPressed: () {
-                      Navigator.pop(context); // Close dialog
-                      // Set flag ada perubahan
+                      Navigator.pop(context);
                       setState(() {
                         hasChanges = true;
                       });
@@ -251,8 +268,8 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: () {
-                    Navigator.pop(context); // Close dialog
-                    Navigator.pop(context, true); // Back to list
+                    Navigator.pop(context);
+                    Navigator.pop(context, true);
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.lightGreen,
@@ -325,20 +342,51 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        final retry = await showErrorRetryDialog(
+          context: context,
+          title: 'Delete Failed',
+          message: 'Failed to delete product. Please check your connection.',
+          onRetry: _deleteProduct,
         );
+
+        if (retry == false) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Delete cancelled'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final connectivityProvider = context.watch<ConnectivityProvider>();
+
+    if (connectivityProvider.hasError) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text(
+            'Product Detail',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          ),
+          backgroundColor: const Color(0xFF1D4ED8),
+          iconTheme: const IconThemeData(color: Colors.white),
+        ),
+        body: ErrorRetryWidget(
+          message: connectivityProvider.errorMessage,
+          onRetry: () => connectivityProvider.retry(),
+        ),
+      );
+    }
+
     if (isLoading) {
       return Scaffold(
         appBar: AppBar(
           title: const Text('Product Detail'),
-          backgroundColor: Color(0xFF1D4ED8),
+          backgroundColor: const Color(0xFF1D4ED8),
           foregroundColor: Colors.white,
         ),
         body: const Center(child: CircularProgressIndicator()),
@@ -349,7 +397,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
       return Scaffold(
         appBar: AppBar(
           title: const Text('Product Detail'),
-          backgroundColor: Color(0xFF1D4ED8),
+          backgroundColor: const Color(0xFF1D4ED8),
           foregroundColor: Colors.white,
         ),
         body: const Center(child: Text('Product not found')),
@@ -364,10 +412,8 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
 
     return PopScope(
       canPop: false,
-      onPopInvoked: (bool didPop) async {
+      onPopInvokedWithResult: (bool didPop, dynamic result) async {
         if (didPop) return;
-
-        // Return hasChanges saat back
         Navigator.of(context).pop(hasChanges);
       },
       child: Scaffold(
@@ -376,7 +422,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
             'Product Detail',
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
           ),
-          backgroundColor: Color(0xFF1D4ED8),
+          backgroundColor: const Color(0xFF1D4ED8),
           iconTheme: const IconThemeData(color: Colors.white),
           leading: IconButton(
             icon: const Icon(Icons.arrow_back),
@@ -385,7 +431,6 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
             },
           ),
         ),
-
         body: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -413,7 +458,6 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Product Name
                     Text(
                       merchandise!.name,
                       style: const TextStyle(
@@ -422,15 +466,11 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                       ),
                     ),
                     const SizedBox(height: 8),
-
-                    // Organizer Name
                     Text(
                       merchandise!.organizerName,
                       style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                     ),
                     const SizedBox(height: 16),
-
-                    // Category Badge
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 12,
@@ -451,8 +491,6 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                       ),
                     ),
                     const SizedBox(height: 20),
-
-                    // Price
                     Row(
                       children: [
                         Image.asset(
@@ -479,8 +517,6 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                       ],
                     ),
                     const SizedBox(height: 20),
-
-                    // Description
                     Text(
                       merchandise!.description,
                       style: TextStyle(
@@ -490,8 +526,6 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                       ),
                     ),
                     const SizedBox(height: 24),
-
-                    // Stock
                     Row(
                       children: [
                         Text(
@@ -526,7 +560,6 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
 
                     // Runner Actions
                     if (!isOwner && userType == 'runner') ...[
-                      // Quantity Selector
                       Row(
                         children: [
                           const Text(
@@ -575,8 +608,6 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                         ],
                       ),
                       const SizedBox(height: 24),
-
-                      // Redeem Button
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton(
@@ -631,7 +662,6 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                             Expanded(
                               child: ElevatedButton.icon(
                                 onPressed: () async {
-                                  // Navigate ke edit page
                                   final result = await Navigator.push(
                                     context,
                                     MaterialPageRoute(
@@ -641,10 +671,9 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                                     ),
                                   );
 
-                                  // Refresh data jika ada perubahan
                                   if (result == true && mounted) {
-                                    await fetchData(); // Refresh detail page
-                                    hasChanges = true; // Mark ada perubahan
+                                    await fetchData();
+                                    hasChanges = true;
                                   }
                                 },
                                 icon: const Icon(Icons.edit),

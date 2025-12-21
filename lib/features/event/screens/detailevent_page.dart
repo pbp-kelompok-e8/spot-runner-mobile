@@ -4,6 +4,7 @@ import 'dart:async';
 import 'package:provider/provider.dart';
 import 'package:pbp_django_auth/pbp_django_auth.dart';
 import 'package:spot_runner_mobile/core/widgets/error_handler.dart';
+import 'package:spot_runner_mobile/core/widgets/error_retry.dart';
 import 'package:spot_runner_mobile/features/event/screens/dashboard_screen.dart';
 import 'package:spot_runner_mobile/features/event/screens/editevent_form.dart';
 import 'package:spot_runner_mobile/features/event/screens/testpage.dart';
@@ -214,9 +215,11 @@ class _EventDetailPageState extends State<EventDetailPage> {
       }
     } catch (e) {
       if (mounted) {
-        context.read<ConnectivityProvider>().setError(
-          "Failed to make a booking. Please check your connection.",
-          () => _handleBooking(),
+        showErrorRetryDialog(
+          context: context,
+          title: "Connection Error",
+          message: "Failed to make a booking. Please check your connection.",
+          onRetry: () => _handleBooking(),
         );
       }
     } finally {
@@ -264,7 +267,7 @@ class _EventDetailPageState extends State<EventDetailPage> {
   Future<void> _handleEditReview(Datum review) async {
     final result = await showDialog<bool>(
       context: context,
-      builder: (context) => ReviewModal(
+      builder: (dialogContext) => ReviewModal(
         eventName: review.eventName,
         eventId: review.eventId,
         reviewId: review.id,
@@ -272,15 +275,20 @@ class _EventDetailPageState extends State<EventDetailPage> {
         initialReview: review.reviewText,
         onSubmit: (rating, reviewText) async {
           final request = context.read<CookieRequest>();
-          final response = await ReviewService.editReview(
-            request,
-            reviewId: review.id,
-            rating: rating,
-            reviewText: reviewText,
-          );
+          try {
+            final response = await ReviewService.editReview(
+              request,
+              reviewId: review.id,
+              rating: rating,
+              reviewText: reviewText,
+            );
 
-          if (!response['success']) {
-            throw Exception(response['message']);
+            if (!response['success']) {
+              throw Exception(response['message']);
+            }
+          } catch (e) {
+            // Re-throw to be caught by ReviewModal
+            rethrow;
           }
         },
       ),
@@ -303,16 +311,16 @@ class _EventDetailPageState extends State<EventDetailPage> {
   Future<void> _handleDeleteReview(String reviewId) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Delete Review'),
         content: const Text('Are you sure you want to delete this review?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
+            onPressed: () => Navigator.pop(dialogContext, false),
             child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: () => Navigator.pop(context, true),
+            onPressed: () => Navigator.pop(dialogContext, true),
             style: TextButton.styleFrom(foregroundColor: Colors.red),
             child: const Text('Delete'),
           ),
@@ -322,23 +330,34 @@ class _EventDetailPageState extends State<EventDetailPage> {
 
     if (!mounted || confirmed != true) return;
 
-    final request = context.read<CookieRequest>();
-    final response = await ReviewService.deleteReview(request, reviewId);
-
-    if (!mounted) return;
-
-    if (response['success']) {
-      await _loadReviews();
+    try {
+      final request = context.read<CookieRequest>();
+      final response = await ReviewService.deleteReview(request, reviewId);
 
       if (!mounted) return;
-    }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(response['message']),
-        backgroundColor: response['success'] ? Colors.green : Colors.red,
-      ),
-    );
+      if (response['success']) {
+        await _loadReviews();
+
+        if (!mounted) return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(response['message']),
+          backgroundColor: response['success'] ? Colors.green : Colors.red,
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        showErrorRetryDialog(
+          context: context,
+          title: "Connection Error",
+          message: "Failed to delete review. Please check your connection.",
+          onRetry: () => _handleDeleteReview(reviewId),
+        );
+      }
+    }
   }
 
   @override
@@ -634,16 +653,7 @@ class _EventDetailPageState extends State<EventDetailPage> {
                             _isBookingLoading ||
                             !isRunner)
                         ? null
-                        : () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  "Booking category: $_selectedCategory",
-                                ),
-                                backgroundColor: Colors.green,
-                              ),
-                            );
-                          },
+                        : _handleBooking,
                     child: const Text(
                       "Book Now",
                       style: TextStyle(

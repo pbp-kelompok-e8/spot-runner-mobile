@@ -454,7 +454,7 @@ class _RunnerProfilePageState extends State<RunnerProfilePage> {
           
           if (status == 'attending' && eventStatus != 'finished') 
             SizedBox(width: double.infinity, height: 48, child: OutlinedButton.icon(
-              onPressed: () => _showCancelConfirmation(event['id'], event['name']),
+              onPressed: () => _showCancelConfirmation(event['id']?.toString(), event['name']?.toString()),
               icon: const Icon(Icons.delete_outline, color: Color(0xFFE7000B)),
               label: const Text("Cancel Booking", style: TextStyle(color: Color(0xFFE7000B), fontSize: 15, fontWeight: FontWeight.w500)),
               style: OutlinedButton.styleFrom(backgroundColor: const Color(0xFFFEF2F2), side: const BorderSide(color: Color(0xFFFB2C36)), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
