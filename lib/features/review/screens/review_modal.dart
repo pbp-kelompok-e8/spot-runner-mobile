@@ -1,6 +1,8 @@
 // lib/features/review/screens/review_modal.dart
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:spot_runner_mobile/core/widgets/error_handler.dart';
 
 class ReviewModal extends StatefulWidget {
   final String eventName;
@@ -74,15 +76,12 @@ class _ReviewModalState extends State<ReviewModal> {
     try {
       // Panggil callback
       await widget.onSubmit(rating, reviewText);
-      
-      // JANGAN tampilkan error, langsung close
-      // Close dialog HANYA jika widget masih mounted
+
       if (mounted) {
         Navigator.of(context).pop(true);
       }
     } catch (e) {
       print("Error in _handleSubmit: $e");
-      // Hanya tampilkan error jika benar-benar gagal
       if (mounted) {
         setState(() {
           _errorMessage = 'Failed to submit review: ${e.toString()}';
@@ -95,6 +94,12 @@ class _ReviewModalState extends State<ReviewModal> {
       setState(() {
         _isSubmitting = false;
       });
+
+      if (!context.mounted) return;
+      context.read<ConnectivityProvider>().setError(
+        "Failed to submit review. Please check your connection.",
+        () => _handleSubmit(), // Retry callback
+      );
     }
   }
 }
