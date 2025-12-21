@@ -74,6 +74,7 @@ class ApiConfig {
   /// API helpers
   static String changePassword() => '$baseUrl/api/change-password/';
   static String editProfile() => '$baseUrl/api/edit-profile/';
+  static String editEOProfile() => '$baseUrl/event-organizer/edit-profile-flutter/';
   static String deleteAccount() => '$baseUrl/api/delete-account/';
   static String cancelParticipation(String username, String eventId) =>
       '$baseUrl/api/cancel/$username/$eventId/';

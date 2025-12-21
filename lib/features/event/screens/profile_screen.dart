@@ -3,6 +3,7 @@ import 'package:pbp_django_auth/pbp_django_auth.dart';
 import 'package:provider/provider.dart';
 
 import 'package:spot_runner_mobile/core/widgets/left_drawer.dart';
+import 'package:spot_runner_mobile/features/auth/screens/edit_profile_eo.dart';
 import 'package:spot_runner_mobile/features/auth/screens/login.dart';
 import 'package:spot_runner_mobile/features/auth/screens/change_password.dart';
 import 'package:spot_runner_mobile/features/auth/screens/edit_profile.dart';
@@ -34,6 +35,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final request = context.watch<CookieRequest>();
+    final String userRole = request.jsonData['role'] ?? '';
+    bool isRunner = userRole.toLowerCase() == 'runner';
 
     const Color primaryBlue = Color(0xFF1D4ED8);
     const Color logoutGrey = Color(0xFF9CA3AF);
@@ -263,6 +266,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   const SizedBox(height: 16),
 
                   // 2. EDIT PROFILE (BAGIAN PENTING)
+                  if (!isRunner)
                   SizedBox(
                     width: double.infinity,
                     height: 50,
@@ -279,8 +283,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         final result = await Navigator.push(
                           context,
                           MaterialPageRoute(
-                              builder: (context) =>
-                                  const EditProfilePage(currentUsername: "ayay", currentLocation: "babi",)
+                              builder: (context) => isRunner
+                                  ? const EditProfilePage(currentUsername: "ayay", currentLocation: "babi",)
+                                  : const EditEOProfilePage()
                                   ),
                         );
 
