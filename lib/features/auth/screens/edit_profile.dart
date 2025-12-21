@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:pbp_django_auth/pbp_django_auth.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter/foundation.dart' show kIsWeb; // Tambahkan ini
+import 'package:spot_runner_mobile/core/config/api_config.dart';
 import 'dart:convert';
 
 class EditProfilePage extends StatefulWidget {
@@ -25,7 +25,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
   String? _baseLocation;
   bool _isLoading = false;
 
-  // Daftar lokasi sesuai models.py Django
   final List<String> locations = [
     'jakarta', 'surabaya', 'bandung', 'medan', 'semarang',
     'makassar', 'palembang', 'denpasar', 'yogyakarta',
@@ -61,14 +60,11 @@ class _EditProfilePageState extends State<EditProfilePage> {
     final request = context.read<CookieRequest>();
     setState(() => _isLoading = true);
 
-    // --- PERBAIKAN URL ---
-    // Gunakan endpoint 'api/edit-profile/' sesuai urls.py
-    String baseUrl = kIsWeb ? "http://localhost:8000" : "http://10.0.2.2:8000";
-    final String url = "$baseUrl/api/edit-profile/";
+    // --- URL ---
+    final String url = ApiConfig.editProfile();
 
     try {
-      // --- PERBAIKAN REQUEST ---
-      // Gunakan postJson karena views.py (api_edit_profile) mengharapkan JSON Body
+      // --- REQUEST ---
       final response = await request.postJson(
         url,
         jsonEncode({
@@ -85,7 +81,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
           const SnackBar(content: Text('Profil berhasil diperbarui!'), backgroundColor: Colors.green),
         );
         
-        // PERBAIKAN: Kembalikan Map data, bukan cuma boolean
+        // Kembalikan Map data, bukan cuma boolean
         Navigator.pop(context, {
           'new_username': _usernameController.text,
           'new_location': _baseLocation ?? '',

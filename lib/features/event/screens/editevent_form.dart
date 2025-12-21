@@ -6,7 +6,9 @@ import 'package:http/http.dart' as http;
 import 'package:spot_runner_mobile/core/widgets/left_drawer.dart';
 import 'package:provider/provider.dart';
 import 'package:pbp_django_auth/pbp_django_auth.dart';
-import 'package:spot_runner_mobile/core/config/api_config.dart'; 
+import 'package:spot_runner_mobile/core/config/api_config.dart';
+import 'package:spot_runner_mobile/features/event/screens/dashboard_screen.dart';
+import 'package:spot_runner_mobile/features/event/screens/detailevent_page.dart'; 
 
 
 class EditEventFormPage extends StatefulWidget {
@@ -38,7 +40,6 @@ class _EditEventFormPageState extends State<EditEventFormPage> {
   @override
   void initState() {
     super.initState();
-    print("DEBUG: Data event dari server adalah ->${widget.event['event_categories']}");
     final df = DateFormat('yyyy-MM-dd HH:mm');
 
     final data = widget.event;
@@ -665,7 +666,11 @@ class _EditEventFormPageState extends State<EditEventFormPage> {
                                   backgroundColor: Colors.green,
                                 ),
                               );
-                              Navigator.pop(context, true);
+                              Navigator.pushReplacement(context,
+                                MaterialPageRoute(
+                                  builder: (context) => DashboardScreen(),
+                                ),
+                              );
                             } else {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(

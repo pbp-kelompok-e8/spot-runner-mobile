@@ -5,7 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:spot_runner_mobile/core/widgets/left_drawer.dart';
 import 'package:spot_runner_mobile/core/models/event_entry.dart';
 import 'package:spot_runner_mobile/features/event/screens/detailevent_page.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:spot_runner_mobile/core/config/api_config.dart';
 import 'package:spot_runner_mobile/core/widgets/custom_app_bar.dart';
 
 class MyHomePage extends StatefulWidget {
@@ -51,16 +51,11 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   String getBaseUrl() {
-    if (kIsWeb) {
-      return "http://127.0.0.1:8000";
-    } else {
-      return "http://10.0.2.2:8000";
-    }
+    return ApiConfig.baseUrl;
   }
 
   Future<List<EventEntry>> fetchEvents(CookieRequest request) async {
-    final String baseUrl = getBaseUrl();
-    final response = await request.get('$baseUrl/event/json/');
+    final response = await request.get(ApiConfig.eventJson);
 
     List<EventEntry> listEvents = [];
     for (var d in response) {

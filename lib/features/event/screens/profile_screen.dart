@@ -6,8 +6,9 @@ import 'package:spot_runner_mobile/core/widgets/left_drawer.dart';
 import 'package:spot_runner_mobile/features/auth/screens/login.dart';
 import 'package:spot_runner_mobile/features/auth/screens/change_password.dart';
 import 'package:spot_runner_mobile/features/auth/screens/edit_profile.dart';
+import 'package:spot_runner_mobile/core/config/api_config.dart';
 
-// UBAH JADI STATEFUL WIDGET AGAR BISA SETSTATE
+// STATEFUL WIDGET AGAR BISA SETSTATE
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
@@ -20,7 +21,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // Fungsi fetch dipisah agar bisa dipanggil ulang
   Future<Map<String, dynamic>> fetchProfile(CookieRequest request) async {
     final response = await request.get(
-      'http://127.0.0.1:8000/event-organizer/profile/json/',
+      ApiConfig.eventOrganizerProfile(),
     );
     return response;
   }
@@ -230,8 +231,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       onPressed: () async {
                         final request = context.read<CookieRequest>();
                         try {
-                          await request.logout(
-                              "http://127.0.0.1:8000/auth/logout/");
+                          await request.logout(ApiConfig.logout);
                           if (!context.mounted) return;
                           Navigator.pushAndRemoveUntil(
                             context,
@@ -341,10 +341,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         if (shouldDelete != true) return;
 
                         final request = context.read<CookieRequest>();
-                        const String deleteUrl =
-                            'http://127.0.0.1:8000/event-organizer/delete-account-flutter/';
                         try {
-                          final resp = await request.post(deleteUrl, {});
+                          final resp = await request.post(ApiConfig.deleteAccountUrl(), {});
                           if (resp != null &&
                               resp['status'] == 'success') {
                             if (context.mounted) {
