@@ -5,6 +5,8 @@ import 'package:provider/provider.dart';
 import 'package:spot_runner_mobile/core/config/api_config.dart';
 import 'package:spot_runner_mobile/features/merchandise/models/redemption_model.dart';
 import 'package:spot_runner_mobile/features/merchandise/utils/image_helper.dart';
+import 'package:spot_runner_mobile/core/widgets/error_handler.dart';
+import 'package:spot_runner_mobile/core/widgets/error_retry.dart';
 import 'dart:async';
 
 class HistoryPage extends StatefulWidget {
@@ -18,7 +20,7 @@ class _HistoryPageState extends State<HistoryPage> {
   bool isLoading = true;
   String userType = 'guest';
   List<Redemption> redemptions = [];
-  String errorMessage = '';
+  Timer? _autoRefreshTimer;
 
   @override
   void initState() {
@@ -27,8 +29,14 @@ class _HistoryPageState extends State<HistoryPage> {
     _startAutoRefresh();
   }
 
+  @override
+  void dispose() {
+    _autoRefreshTimer?.cancel();
+    super.dispose();
+  }
+
   void _startAutoRefresh() {
-    Timer.periodic(const Duration(seconds: 30), (timer) {
+    _autoRefreshTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
       if (mounted) {
         fetchRedemptions();
       }
@@ -36,6 +44,10 @@ class _HistoryPageState extends State<HistoryPage> {
   }
 
   Future<void> fetchRedemptions() async {
+    if (!mounted) return;
+    
+    setState(() => isLoading = true);
+
     final request = context.read<CookieRequest>();
 
     try {
@@ -53,9 +65,14 @@ class _HistoryPageState extends State<HistoryPage> {
       debugPrint('Error fetching redemptions: $e');
       if (mounted) {
         setState(() {
-          errorMessage = e.toString();
           isLoading = false;
         });
+        
+        // Set error ke ConnectivityProvider
+        context.read<ConnectivityProvider>().setError(
+          "Failed to load redemption history. Please check your connection.",
+          () => fetchRedemptions(),
+        );
       }
     }
   }
@@ -66,69 +83,49 @@ class _HistoryPageState extends State<HistoryPage> {
 
   @override
   Widget build(BuildContext context) {
+    final connectivityProvider = context.watch<ConnectivityProvider>();
+    
     return Scaffold(
       appBar: AppBar(
         title: const Text(
           'History',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
-        backgroundColor: Color(0xFF1D4ED8),
+        backgroundColor: const Color(0xFF1D4ED8),
         iconTheme: const IconThemeData(color: Colors.white),
       ),
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : errorMessage.isNotEmpty
-          ? Center(
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.error_outline, size: 64, color: Colors.red[300]),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Error loading history',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.red[700],
+      body: connectivityProvider.hasError
+          ? ErrorRetryWidget(
+              message: connectivityProvider.errorMessage,
+              onRetry: () => connectivityProvider.retry(),
+            )
+          : isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : redemptions.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.history, size: 64, color: Colors.grey[400]),
+                          const SizedBox(height: 16),
+                          Text(
+                            'No redemption history yet',
+                            style: TextStyle(fontSize: 18, color: Colors.grey[600]),
+                          ),
+                        ],
+                      ),
+                    )
+                  : RefreshIndicator(
+                      onRefresh: fetchRedemptions,
+                      child: ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: redemptions.length,
+                        itemBuilder: (context, index) {
+                          final redemption = redemptions[index];
+                          return _buildRedemptionCard(redemption);
+                        },
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      errorMessage,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: Colors.grey[600]),
-                    ),
-                  ],
-                ),
-              ),
-            )
-          : redemptions.isEmpty
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.history, size: 64, color: Colors.grey[400]),
-                  const SizedBox(height: 16),
-                  Text(
-                    'No redemption history yet',
-                    style: TextStyle(fontSize: 18, color: Colors.grey[600]),
-                  ),
-                ],
-              ),
-            )
-          : RefreshIndicator(
-              onRefresh: fetchRedemptions,
-              child: ListView.builder(
-                padding: const EdgeInsets.all(16),
-                itemCount: redemptions.length,
-                itemBuilder: (context, index) {
-                  final redemption = redemptions[index];
-                  return _buildRedemptionCard(redemption);
-                },
-              ),
-            ),
     );
   }
 
@@ -208,7 +205,6 @@ class _HistoryPageState extends State<HistoryPage> {
             const SizedBox(height: 8),
 
             if (userType == 'organizer' && redemption.user != null) ...[
-              // Divider(color: Colors.grey[300]),
               const SizedBox(height: 8),
 
               // User info for organizer
@@ -232,7 +228,6 @@ class _HistoryPageState extends State<HistoryPage> {
                     ],
                   ),
                   const SizedBox(height: 8),
-                  // Divider(color: Colors.grey[300]),
                   const SizedBox(height: 8),
                 ],
               ),
