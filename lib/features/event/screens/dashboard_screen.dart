@@ -251,7 +251,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     final String baseLocation = formatLocation(user.details?.baseLocation);
 
-    final String joinedDate = DateFormat('dd MMM yyyy').format(DateTime.now());
+    final String lastLogin = DateFormat('dd MMM yyyy').format(DateTime.now());
 
     return Container(
       width: double.infinity,
