@@ -3,8 +3,11 @@ import 'package:intl/intl.dart';
 import 'dart:async';
 import 'package:provider/provider.dart';
 import 'package:pbp_django_auth/pbp_django_auth.dart';
+import 'package:spot_runner_mobile/core/widgets/error_handler.dart';
+import 'package:spot_runner_mobile/features/event/screens/dashboard_screen.dart';
 import 'package:spot_runner_mobile/features/event/screens/editevent_form.dart';
-import 'package:spot_runner_mobile/core/config/api_config.dart'; 
+import 'package:spot_runner_mobile/features/event/screens/testpage.dart';
+import 'package:spot_runner_mobile/core/config/api_config.dart';
 import 'package:spot_runner_mobile/features/review/screens/review_card.dart';
 import 'package:spot_runner_mobile/features/review/screens/review_modal.dart';
 import 'package:spot_runner_mobile/features/review/service/review_service.dart';
@@ -20,7 +23,8 @@ class EventDetailPage extends StatefulWidget {
 }
 
 class _EventDetailPageState extends State<EventDetailPage> {
-  late Future<Map<String, dynamic>> _eventFuture;
+  Map<String, dynamic>? _eventData;
+  bool _isEventLoading = true;
   String? _selectedCategory;
   Map<String, dynamic>? _eoData;
   bool _isEoLoading = true;
@@ -46,16 +50,7 @@ class _EventDetailPageState extends State<EventDetailPage> {
   @override
   void initState() {
     super.initState();
-    _eventFuture = fetchEventDetail().then((eventData) {
-      var eoId = eventData['user_eo'];
-      if (eoId is Map) {
-        eoId = eoId['pk'] ?? eoId['id'];
-      }
-      if (eoId != null) {
-        fetchEODetail(eoId.toString());
-      }
-      return eventData;
-    });
+    _loadEventDetail();
     _loadReviews();
   }
 
@@ -65,45 +60,86 @@ class _EventDetailPageState extends State<EventDetailPage> {
   }
 
   Future<void> _loadReviews() async {
+    print("🔄 Loading reviews...");
+
+    if (!mounted) return;
+
     final request = context.read<CookieRequest>();
+
     try {
       final reviewEntry = await ReviewService.getAllReviews(
         request,
         eventId: widget.eventId,
       );
-      
-      if (mounted && reviewEntry != null) {
+
+      print("📦 Received ${reviewEntry?.data.length ?? 0} reviews");
+
+      if (mounted) {
         setState(() {
-          _reviews = reviewEntry.data;
+          _reviews = reviewEntry?.data ?? [];
           _isLoadingReviews = false;
         });
+        print("✅ Reviews updated in UI");
       }
     } catch (e) {
+      print("❌ Error loading reviews: $e");
       if (mounted) {
-        setState(() => _isLoadingReviews = false);
+        setState(() {
+          _reviews = [];
+          _isLoadingReviews = false;
+        });
+        context.read<ConnectivityProvider>().setError(
+          "Failed to load reviews. Please check your connection.",
+          () => _loadReviews(),
+        );
       }
     }
   }
 
-  Future<Map<String, dynamic>> fetchEventDetail() async {
-    final request = context.read<CookieRequest>();
-    final response = await request.get(
-      ApiConfig.eventDetail(widget.eventId),
-    );
+  Future<void> _loadEventDetail() async {
+    setState(() => _isEventLoading = true);
 
-    if (response is List) {
-      return response[0];
+    final request = context.read<CookieRequest>();
+    try {
+      final response = await request.get(ApiConfig.eventDetail(widget.eventId));
+
+      Map<String, dynamic> eventData;
+      if (response is List) {
+        eventData = response[0];
+      } else {
+        eventData = response;
+      }
+
+      if (mounted) {
+        setState(() {
+          _eventData = eventData;
+          _isEventLoading = false;
+        });
+
+        // Load EO detail after event loaded
+        var eoId = eventData['user_eo'];
+        if (eoId is Map) {
+          eoId = eoId['pk'] ?? eoId['id'];
+        }
+        if (eoId != null) {
+          fetchEODetail(eoId.toString());
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isEventLoading = false);
+        context.read<ConnectivityProvider>().setError(
+          "Gagal memuat detail event. Periksa koneksi internet Anda.",
+          () => _loadEventDetail(),
+        );
+      }
     }
-    return response;
   }
 
   Future<void> fetchEODetail(String eoId) async {
     final request = context.read<CookieRequest>();
     try {
-      // Gunakan ApiConfig untuk URL EO jika tersedia, atau hardcode base url server
-      final response = await request.get(
-        ApiConfig.eventOrganizerJson(), 
-      );
+      final response = await request.get(ApiConfig.eventOrganizerJson());
       if (response['status'] == 'success') {
         List<dynamic> organizers = response['data'];
         var foundEO = organizers.firstWhere(
@@ -119,7 +155,13 @@ class _EventDetailPageState extends State<EventDetailPage> {
         }
       }
     } catch (e) {
-      if (mounted) setState(() => _isEoLoading = false);
+      if (mounted) {
+        setState(() => _isEoLoading = false);
+        context.read<ConnectivityProvider>().setError(
+          "Failed to load organizer data. Please check your connection.",
+          () => fetchEODetail(eoId),
+        );
+      }
     }
   }
 
@@ -132,20 +174,21 @@ class _EventDetailPageState extends State<EventDetailPage> {
 
     final request = context.read<CookieRequest>();
     final username = request.jsonData['username'];
-    
+
     if (username == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Silakan login terlebih dahulu.")),
-        );
-        setState(() => _isBookingLoading = false);
-        return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Silakan login terlebih dahulu.")),
+      );
+      setState(() => _isBookingLoading = false);
+      return;
     }
 
-    // [PERBAIKAN 1] Konversi Kategori ke format Value (misal "Fun Run (3K)" -> "fun_run")
-    final String categoryValue = _getCategoryValue(_selectedCategory!);
-
-    // [PERBAIKAN 2] Gunakan ApiConfig, JANGAN hardcode URL localhost
-    final url = ApiConfig.participateUrl(username, widget.eventId, categoryValue);
+    // URL: /api/participate/<username>/<event_id>/<category>/
+    final url = ApiConfig.participateUrl(
+      username,
+      widget.eventId,
+      _selectedCategory!,
+    );
 
     try {
       final response = await request.post(url, {});
@@ -155,12 +198,12 @@ class _EventDetailPageState extends State<EventDetailPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(response['message']), backgroundColor: Colors.green),
           );
-          
+
+          // Refresh detail event agar kuota/status terupdate
           setState(() {
-            _eventFuture = fetchEventDetail();
-            _selectedCategory = null; 
+            _selectedCategory = null; // Reset pilihan
           });
-          
+          _loadEventDetail();
         } else if (response['status'] == 'warning') {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(response['message']), backgroundColor: Colors.orange),
@@ -173,8 +216,9 @@ class _EventDetailPageState extends State<EventDetailPage> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
+        context.read<ConnectivityProvider>().setError(
+          "Failed to make a booking. Please check your connection.",
+          () => _handleBooking(),
         );
       }
     } finally {
@@ -196,7 +240,10 @@ class _EventDetailPageState extends State<EventDetailPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text("Event deleted successfully!"), backgroundColor: Colors.green),
           );
-            Navigator.pop(context, true);
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => DashboardScreen()),
+          );
         }
       } else {
         if (mounted) {
@@ -207,8 +254,9 @@ class _EventDetailPageState extends State<EventDetailPage> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
+        context.read<ConnectivityProvider>().setError(
+          "Failed to delete event. Please check your connection.",
+          () => _deleteEvent(id),
         );
       }
     }
@@ -225,47 +273,33 @@ class _EventDetailPageState extends State<EventDetailPage> {
         initialRating: review.rating,
         initialReview: review.reviewText,
         onSubmit: (rating, reviewText) async {
-          await _submitEditReview(review.id, rating, reviewText);
+          final request = context.read<CookieRequest>();
+          final response = await ReviewService.editReview(
+            request,
+            reviewId: review.id,
+            rating: rating,
+            reviewText: reviewText,
+          );
+
+          if (!response['success']) {
+            throw Exception(response['message']);
+          }
         },
       ),
     );
 
-    if (result == true) {
-      _loadReviews();
-    }
-  }
+    if (!mounted || result != true) return;
 
-  Future<void> _submitEditReview(String reviewId, int rating, String reviewText) async {
-    final request = context.read<CookieRequest>();
-    
-    try {
-      final response = await ReviewService.editReview(
-        request,
-        reviewId: reviewId,
-        rating: rating,
-        reviewText: reviewText,
-      );
+    await _loadReviews();
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(response['message']),
-            backgroundColor: response['success'] ? Colors.green : Colors.red,
-          ),
-        );
+    if (!mounted) return;
 
-        if (response['success']) {
-          Navigator.pop(context, true);
-          _loadReviews();
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
-        );
-      }
-    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Review updated successfully'),
+        backgroundColor: Colors.green,
+      ),
+    );
   }
 
   Future<void> _handleDeleteReview(String reviewId) async {
@@ -288,23 +322,25 @@ class _EventDetailPageState extends State<EventDetailPage> {
       ),
     );
 
-    if (confirmed == true) {
-      final request = context.read<CookieRequest>();
-      final response = await ReviewService.deleteReview(request, reviewId);
+    if (!mounted || confirmed != true) return;
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(response['message']),
-            backgroundColor: response['success'] ? Colors.green : Colors.red,
-          ),
-        );
+    final request = context.read<CookieRequest>();
+    final response = await ReviewService.deleteReview(request, reviewId);
 
-        if (response['success']) {
-          _loadReviews();
-        }
-      }
+    if (!mounted) return;
+
+    if (response['success']) {
+      await _loadReviews();
+
+      if (!mounted) return;
     }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(response['message']),
+        backgroundColor: response['success'] ? Colors.green : Colors.red,
+      ),
+    );
   }
 
   @override
@@ -313,306 +349,470 @@ class _EventDetailPageState extends State<EventDetailPage> {
 
     return Scaffold(
       backgroundColor: Colors.white,
-      body: FutureBuilder<Map<String, dynamic>>(
-        future: _eventFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          } else if (snapshot.hasError) {
-            return Center(child: Text("Error: ${snapshot.error}"));
-          } else if (!snapshot.hasData) {
-            return const Center(child: Text("Data event tidak ditemukan."));
-          }
+      body: _buildBody(request, isRunner),
+    );
+  }
 
-          final event = snapshot.data!;
+  Widget _buildBody(CookieRequest request, bool isRunner) {
+    if (_isEventLoading) {
+      return const Center(child: CircularProgressIndicator());
+    } else if (_eventData == null) {
+      return const Center(child: Text("Data event tidak ditemukan."));
+    }
 
-          List<String> imageUrls = [];
-          void addImageIfValid(dynamic img) {
-            if (img != null && img.toString().isNotEmpty && img.toString() != "null") {
-              imageUrls.add(img.toString());
-            }
-          }
+    final event = _eventData!;
 
-          addImageIfValid(event['image']);
-          addImageIfValid(event['image_2'] ?? event['image2']);
-          addImageIfValid(event['image_3'] ?? event['image3']);
+    // --- LOGIKA GAMBAR ---
+    List<String> imageUrls = [];
+    void addImageIfValid(dynamic img) {
+      if (img != null &&
+          img.toString().isNotEmpty &&
+          img.toString() != "null") {
+        imageUrls.add(img.toString());
+      }
+    }
 
-          bool hasImage = imageUrls.isNotEmpty;
+    addImageIfValid(event['image']);
+    addImageIfValid(event['image_2'] ?? event['image2']);
+    addImageIfValid(event['image_3'] ?? event['image3']);
 
-          final String title = event['name'] ?? 'No Title';
-          final String dateStr = event['event_date'] ?? DateTime.now().toIso8601String();
-          final DateTime eventDate = DateTime.parse(dateStr);
-          final String location = event['location'] ?? 'Unknown';
-          final int capacity = event['capacity'] ?? 0;
-          final int totalParticipants = event['total_participans'] ?? 0;
-          final String description = event['description'] ?? '-';
-          final List<dynamic> categories = event['event_categories'] ?? [];
-          final dynamic sessionUserId = request.jsonData['user_id'];
-          final String sessionUsername = request.jsonData['username'] ?? '';
+    bool hasImage = imageUrls.isNotEmpty;
 
-          dynamic eventOwnerId;
-          String eventOwnerName = '';
-          if (event['user_eo'] is Map) {
-            final Map<String, dynamic> ownerMap = event['user_eo'];
-            eventOwnerId = ownerMap['pk'] ?? ownerMap['id'];
-            eventOwnerName = ownerMap['username'] ?? '';
-          } else {
-            eventOwnerId = event['user_eo'];
-          }
+    final String title = event['name'] ?? 'No Title';
+    final String dateStr =
+        event['event_date'] ?? DateTime.now().toIso8601String();
+    final DateTime eventDate = DateTime.parse(dateStr);
+    final String location = event['location'] ?? 'Unknown';
+    final int capacity = event['capacity'] ?? 0;
+    final int totalParticipants = event['total_participans'] ?? 0;
+    final String description = event['description'] ?? '-';
+    final List<dynamic> categories = event['event_categories'] ?? [];
+    final dynamic sessionUserId = request.jsonData['user_id'];
+    final String sessionUsername = request.jsonData['username'] ?? '';
 
-          bool isOwner = false;
-          if (request.loggedIn) {
-            if (sessionUserId != null && eventOwnerId != null) {
-              isOwner = sessionUserId.toString() == eventOwnerId.toString();
-            }
-            if (!isOwner && sessionUsername.isNotEmpty && eventOwnerName.isNotEmpty) {
-              isOwner = sessionUsername == eventOwnerName;
-            }
-          }
+    dynamic eventOwnerId;
+    String eventOwnerName = '';
+    if (event['user_eo'] is Map) {
+      final Map<String, dynamic> ownerMap = event['user_eo'];
+      eventOwnerId = ownerMap['pk'] ?? ownerMap['id'];
+      eventOwnerName = ownerMap['username'] ?? '';
+    } else {
+      eventOwnerId = event['user_eo'];
+    }
 
-          final organizerData = event['user_eo'] ?? {};
-          final String organizerName = organizerData['username'] ?? 'Organizer';
+    bool isOwner = false;
+    if (request.loggedIn) {
+      if (sessionUserId != null && eventOwnerId != null) {
+        isOwner = sessionUserId.toString() == eventOwnerId.toString();
+      }
+      if (!isOwner && sessionUsername.isNotEmpty && eventOwnerName.isNotEmpty) {
+        isOwner = sessionUsername == eventOwnerName;
+      }
+    }
 
-          return CustomScrollView(
-            slivers: [
-              if (hasImage)
-                SliverToBoxAdapter(
-                  child: ImageSliderWidget(
-                    imageUrls: imageUrls,
-                    onBackPressed: () => Navigator.pop(context),
+    final organizerData = event['user_eo'] ?? {};
+    final String organizerName = organizerData['username'] ?? 'Organizer';
+
+    return CustomScrollView(
+      slivers: [
+        // --- 1. SLIDER GAMBAR ---
+        if (hasImage)
+          SliverToBoxAdapter(
+            child: ImageSliderWidget(
+              imageUrls: imageUrls,
+              onBackPressed: () => Navigator.pop(context),
+            ),
+          ),
+
+        // --- 2. APPBAR (Jika tidak ada gambar) ---
+        if (!hasImage)
+          SliverAppBar(
+            pinned: true,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.black),
+              onPressed: () => Navigator.pop(context),
+            ),
+            title: Text(title, style: const TextStyle(color: Colors.black)),
+            backgroundColor: Colors.white,
+            elevation: 1,
+          ),
+
+        // --- 3. KONTEN DETAIL ---
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (hasImage) ...[
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
-
-              if (!hasImage)
-                SliverAppBar(
-                  pinned: true,
-                  leading: IconButton(
-                    icon: const Icon(Icons.arrow_back, color: Colors.black),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                  title: Text(title, style: const TextStyle(color: Colors.black)),
-                  backgroundColor: Colors.white,
-                  elevation: 1,
-                ),
-
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  const SizedBox(height: 16),
+                ],
+                if (isOwner)
+                  Row(
                     children: [
-                      if (hasImage) ...[
-                        Text(title, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 16),
-                      ],
-                      if (isOwner)
-                        Row(
-                          children: [
-                            Expanded(
-                              child: OutlinedButton.icon(
-                                icon: const Icon(Icons.edit, size: 16, color: Color(0xFF1D4ED8)),
-                                label: const Text("Edit", style: TextStyle(color: Color(0xFF1D4ED8))),
-                                style: OutlinedButton.styleFrom(
-                                  side: const BorderSide(color: Color(0xFF1D4ED8), width: 1.5),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                                ),
-                                onPressed: () async {
-                                  bool? result = await Navigator.push(
-                                    context,
-                                    MaterialPageRoute(builder: (context) => EditEventFormPage(event: event)),
-                                  );
-                                  if (result == true) {
-                                    setState(() { _eventFuture = fetchEventDetail(); });
-                                  }
-                                },
-                              ),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          icon: const Icon(
+                            Icons.edit,
+                            size: 16,
+                            color: Color(0xFF1D4ED8),
+                          ),
+                          label: const Text(
+                            "Edit",
+                            style: TextStyle(color: Color(0xFF1D4ED8)),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(
+                              color: Color(0xFF1D4ED8),
+                              width: 1.5,
                             ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: ElevatedButton.icon(
-                                icon: const Icon(Icons.delete, size: 16, color: Colors.white),
-                                label: const Text("Delete", style: TextStyle(color: Colors.white)),
-                                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                                onPressed: () => _showDeleteDialog(context),
-                              ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
                             ),
-                          ],
+                          ),
+                          onPressed: () async {
+                            bool? result = await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    EditEventFormPage(event: event),
+                              ),
+                            );
+                            if (result == true) {
+                              _loadEventDetail();
+                            }
+                          },
                         ),
-                      if (isOwner) const SizedBox(height: 24),
-
-                      const Text("About This Event", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 12),
-                      _buildInfoRow(Icons.people_outline, "Participants", "$totalParticipants/$capacity"),
-                      // Menggunakan Format Tanggal dengan Hari (Sun, Mon, dst)
-                      _buildInfoRow(Icons.calendar_today_outlined, "Date", DateFormat('dd MMM yyyy (E)').format(eventDate)),
-                      _buildInfoRow(Icons.location_on_outlined, "Location", location.replaceAll("_", " ")),
-                      _buildInfoRow(Icons.run_circle_outlined, "Type", categories.join(", ").replaceAll("_", " ")),
-
-                      const SizedBox(height: 24),
-                      Text(description, style: TextStyle(fontSize: 14, color: Colors.grey[700], height: 1.5)),
-
-                      const SizedBox(height: 24),
-                      EventTimerWidget(targetDate: eventDate, deadlineString: event['regist_deadline']),
-                      const SizedBox(height: 24),
-                      const Text("Select Category", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 8),
-                      
-                      // CATEGORY SELECTION LIST
-                      ...categories.map((cat) {
-                        String categoryName = cat.toString();
-                        bool isSelected = _selectedCategory == categoryName;
-                        return Card(
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                            side: BorderSide(color: isSelected ? const Color(0xFF1D4ED8) : Colors.grey[300]!, width: isSelected ? 2 : 1),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          icon: const Icon(
+                            Icons.delete,
+                            size: 16,
+                            color: Colors.white,
                           ),
-                          margin: const EdgeInsets.only(bottom: 8),
-                          child: InkWell(
-                            onTap: () {
-                              setState(() {
-                                if (isSelected) _selectedCategory = null;
-                                else _selectedCategory = categoryName;
-                              });
-                            },
-                            borderRadius: BorderRadius.circular(10),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    categoryName.toUpperCase().replaceAll("_", " "),
-                                    style: TextStyle(fontWeight: FontWeight.bold, color: isSelected ? const Color(0xFF1D4ED8) : Colors.black),
-                                  ),
-                                  if (isSelected) const Icon(Icons.check_circle, color: Color(0xFF1D4ED8)),
-                                ],
-                              ),
-                            ),
+                          label: const Text(
+                            "Delete",
+                            style: TextStyle(color: Colors.white),
                           ),
-                        );
-                      }).toList(),
-
-                      const SizedBox(height: 20),
-
-                      SizedBox(
-                        width: double.infinity,
-                        height: 50,
-                        child: ElevatedButton(
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: _selectedCategory != null ? const Color(0xFF1D4ED8) : Colors.grey[300],
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            backgroundColor: Colors.red,
                           ),
-                          onPressed: (_selectedCategory == null || _isBookingLoading)
-                              ? null
-                              : _handleBooking, // Panggil fungsi booking yang sudah diperbaiki
-                          child: _isBookingLoading 
-                            ? const CircularProgressIndicator(color: Colors.white)
-                            : const Text("Book Now", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                          onPressed: () => _showDeleteDialog(context),
                         ),
                       ),
-
-                      const SizedBox(height: 30),
-                      // Organizer Section (Tetap sama)
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          CircleAvatar(
-                            radius: 20,
-                            backgroundColor: Colors.green[100],
-                            backgroundImage: (_eoData != null && _eoData!['profile_picture'] != null)
-                                ? NetworkImage(_eoData!['profile_picture'])
-                                : null,
-                            child: (_eoData == null || _eoData!['profile_picture'] == null)
-                                ? const Icon(Icons.person, color: Colors.green, size: 20)
-                                : null,
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text("Organized By", style: TextStyle(fontSize: 11, color: Colors.grey)),
-                                Text(organizerName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                                const SizedBox(height: 4),
-                                if (_isEoLoading)
-                                  const SizedBox(height: 10, width: 10, child: CircularProgressIndicator(strokeWidth: 2))
-                                else if (_eoData != null)
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          const Icon(Icons.location_city, size: 12, color: Colors.grey),
-                                          const SizedBox(width: 4),
-                                          Text(
-                                            _eoData!['base_location'][0].toString()[0].toUpperCase() +
-                                            _eoData!['base_location'].toString().substring(1).replaceAll("_", " ") ?? '-',
-                                            style: const TextStyle(fontSize: 11, color: Colors.black87),
-                                          ),
-                                        ],
-                                      ),
-                                      Row(
-                                        children: [
-                                          const Icon(Icons.event_available, size: 12, color: Colors.grey),
-                                          const SizedBox(width: 4),
-                                          Text("${_eoData!['total_events']} Events hosted", style: const TextStyle(fontSize: 11, color: Colors.black87)),
-                                        ],
-                                      ),
-                                    ],
-                                  )
-                                else
-                                  const Text("Detail EO tidak ditemukan", style: TextStyle(fontSize: 10, color: Colors.red)),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
-                      
-                      // Reviews Section
-                      const Text("Rating & Reviews", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 10),
-                      
-                      if (_isLoadingReviews)
-                        const Center(child: Padding(padding: EdgeInsets.all(20.0), child: CircularProgressIndicator()))
-                      else if (_reviews.isEmpty)
-                        Center(child: Padding(padding: const EdgeInsets.all(20.0), child: Text('No reviews yet', style: TextStyle(color: Colors.grey[600], fontSize: 14))))
-                      else
-                        SizedBox(
-                          height: 200,
-                          child: ListView.builder(
-                            scrollDirection: Axis.horizontal,
-                            itemCount: _reviews.length,
-                            itemBuilder: (context, index) {
-                              final review = _reviews[index];
-                              return Container(
-                                width: 280,
-                                margin: const EdgeInsets.only(right: 12),
-                                child: ReviewCard(
-                                  reviewId: review.id,
-                                  runnerName: review.runnerName,
-                                  eventName: review.eventName,
-                                  reviewText: review.reviewText,
-                                  rating: review.rating.toDouble(),
-                                  isOwner: review.isOwner,
-                                  onEdit: () => _handleEditReview(review),
-                                  onDelete: () => _handleDeleteReview(review.id),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      const SizedBox(height: 40),
                     ],
                   ),
+                if (isOwner) const SizedBox(height: 24),
+
+                const Text(
+                  "About This Event",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
-              ),
-            ],
-          );
-        },
-      ),
+                const SizedBox(height: 12),
+                _buildInfoRow(
+                  Icons.people_outline,
+                  "Participants",
+                  "$totalParticipants/$capacity",
+                ),
+                _buildInfoRow(
+                  Icons.calendar_today_outlined,
+                  "Date",
+                  DateFormat('dd MMM yyyy').format(eventDate),
+                ),
+                _buildInfoRow(
+                  Icons.location_on_outlined,
+                  "Location",
+                  location.replaceAll("_", " "),
+                ),
+                _buildInfoRow(
+                  Icons.run_circle_outlined,
+                  "Type",
+                  categories.join(", ").replaceAll("_", " "),
+                ),
+
+                const SizedBox(height: 24),
+                Text(
+                  description,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[700],
+                    height: 1.5,
+                  ),
+                ),
+
+                const SizedBox(height: 24),
+                EventTimerWidget(
+                  targetDate: DateTime.parse(event['regist_deadline']),
+                  deadlineString: event['regist_deadline'],
+                ),
+                const SizedBox(height: 24),
+                const Text(
+                  "Select Category",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                ...categories.map((cat) {
+                  String categoryName = cat.toString();
+                  bool isSelected = _selectedCategory == categoryName;
+                  return Card(
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      side: BorderSide(
+                        color: isSelected
+                            ? Color(0xFF1D4ED8)
+                            : Colors.grey[300]!,
+                        width: isSelected ? 2 : 1,
+                      ),
+                    ),
+                    margin: const EdgeInsets.only(bottom: 8),
+                    child: InkWell(
+                      onTap: () {
+                        setState(() {
+                          if (isSelected)
+                            _selectedCategory = null;
+                          else
+                            _selectedCategory = categoryName;
+                        });
+                      },
+                      borderRadius: BorderRadius.circular(10),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              categoryName.toUpperCase().replaceAll("_", " "),
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: isSelected
+                                    ? Color(0xFF1D4ED8)
+                                    : Colors.black,
+                              ),
+                            ),
+                            if (isSelected)
+                              const Icon(
+                                Icons.check_circle,
+                                color: Color(0xFF1D4ED8),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+
+                const SizedBox(height: 20),
+
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _selectedCategory != null
+                          ? Color(0xFF1D4ED8)
+                          : Colors.grey[300],
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    // Disable tombol jika kategori belum dipilih ATAU sedang loading
+                    onPressed:
+                        (_selectedCategory == null ||
+                            _isBookingLoading ||
+                            !isRunner)
+                        ? null
+                        : () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  "Booking category: $_selectedCategory",
+                                ),
+                                backgroundColor: Colors.green,
+                              ),
+                            );
+                          },
+                    child: const Text(
+                      "Book Now",
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 30),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start, // Align top
+                  children: [
+                    CircleAvatar(
+                      radius: 20,
+                      backgroundColor: Colors.green[100],
+                      backgroundImage:
+                          (_eoData != null &&
+                              _eoData!['profile_picture'] != null)
+                          ? NetworkImage(_eoData!['profile_picture'])
+                          : null,
+                      child:
+                          (_eoData == null ||
+                              _eoData!['profile_picture'] == null)
+                          ? const Icon(
+                              Icons.person,
+                              color: Colors.green,
+                              size: 20,
+                            )
+                          : null,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            "Organized By",
+                            style: TextStyle(fontSize: 11, color: Colors.grey),
+                          ),
+                          Text(
+                            organizerName,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+
+                          const SizedBox(height: 4),
+                          if (_isEoLoading)
+                            const SizedBox(
+                              height: 10,
+                              width: 10,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          else if (_eoData != null)
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.location_city,
+                                      size: 12,
+                                      color: Colors.grey,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      _eoData!['base_location'][0]
+                                                  .toString()[0]
+                                                  .toUpperCase() +
+                                              _eoData!['base_location']
+                                                  .toString()
+                                                  .substring(1)
+                                                  .replaceAll("_", " ") ??
+                                          '-',
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        color: Colors.black87,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.event_available,
+                                      size: 12,
+                                      color: Colors.grey,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      "${_eoData!['total_events']} Events hosted",
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        color: Colors.black87,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            )
+                          else
+                            const Text(
+                              "Detail EO tidak ditemukan",
+                              style: TextStyle(fontSize: 10, color: Colors.red),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                const Text(
+                  "Rating & Reviews",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 10),
+
+                if (_isLoadingReviews)
+                  const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(20.0),
+                      child: CircularProgressIndicator(),
+                    ),
+                  )
+                else if (_reviews.isEmpty)
+                  Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(20.0),
+                      child: Text(
+                        'No reviews yet',
+                        style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                      ),
+                    ),
+                  )
+                else
+                  SizedBox(
+                    height: 200,
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: _reviews.length,
+                      itemBuilder: (context, index) {
+                        final review = _reviews[index];
+                        return Container(
+                          width: 280,
+                          margin: const EdgeInsets.only(right: 12),
+                          child: ReviewCard(
+                            reviewId: review.id,
+                            runnerName: review.runnerName,
+                            eventName: review.eventName,
+                            reviewText: review.reviewText,
+                            rating: review.rating.toDouble(),
+                            isOwner: review.isOwner,
+                            onEdit: () => _handleEditReview(review),
+                            onDelete: () => _handleDeleteReview(review.id),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                const SizedBox(height: 40),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 

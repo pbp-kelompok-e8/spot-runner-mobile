@@ -1,6 +1,8 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:spot_runner_mobile/core/widgets/error_handler.dart';
+import 'package:spot_runner_mobile/core/widgets/error_retry.dart';
 import 'package:spot_runner_mobile/features/auth/screens/login.dart';
 import 'package:spot_runner_mobile/features/event/screens/editevent_form.dart';
 import 'package:spot_runner_mobile/features/event/screens/event_form.dart';
@@ -21,7 +23,8 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MultiProvider( // <--- Ganti jadi MultiProvider
+    return MultiProvider(
+      // <--- Ganti jadi MultiProvider
       providers: [
         Provider(
           create: (_) {
@@ -29,17 +32,43 @@ class MyApp extends StatelessWidget {
             return request;
           },
         ),
-        ChangeNotifierProvider( // <--- Tambahkan UserProvider
+        ChangeNotifierProvider(
+          // <--- Tambahkan UserProvider
           create: (_) => UserProvider(),
         ),
+        ChangeNotifierProvider(create: (_) => ConnectivityProvider()),
       ],
       child: MaterialApp(
         title: 'Spot Runner',
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
-          colorScheme: ColorScheme.fromSwatch(primarySwatch: Colors.blue)
-              .copyWith(secondary: Colors.blueAccent[400]),
+          colorScheme: ColorScheme.fromSwatch(
+            primarySwatch: Colors.blue,
+          ).copyWith(secondary: Colors.blueAccent[400]),
         ),
+        builder: (context, child) {
+          final connectivity = context.watch<ConnectivityProvider>();
+          return Stack(
+            children: [
+              child!, 
+              if (connectivity.hasError)
+                Positioned.fill(
+                  child: Container(
+                    color: Colors.white.withOpacity(
+                      0.9,
+                    ), 
+                    child: Scaffold(
+                      backgroundColor: Colors.transparent,
+                      body: ErrorRetryWidget(
+                        message: connectivity.errorMessage,
+                        onRetry: () => connectivity.retry(),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          );
+        },
         home: const LoginPage(),
       ),
     );
