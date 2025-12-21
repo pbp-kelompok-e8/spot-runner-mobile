@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:spot_runner_mobile/features/auth/screens/register.dart';
 import 'package:spot_runner_mobile/core/providers/user_provider.dart';
 import 'package:spot_runner_mobile/core/config/api_config.dart';
+import 'package:spot_runner_mobile/core/widgets/error_retry.dart'; // Import Widget Error
 
 void main() {
   runApp(const LoginApp());
@@ -44,11 +45,75 @@ class _LoginPageState extends State<LoginPage> {
 
   String? _usernameError;
   String? _passwordError;
+  bool _isLoading = false;
+
+  // Fungsi Login terpisah untuk memudahkan Retry
+  Future<void> _handleLogin() async {
+    // 1. Reset error & Validasi
+    setState(() {
+      _usernameError = null;
+      _passwordError = null;
+    });
+
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isLoading = true);
+    final request = context.read<CookieRequest>();
+
+    try {
+      final response = await request.login(
+        ApiConfig.login, 
+        {
+          'username': _usernameController.text,
+          'password': _passwordController.text,
+        },
+      );
+
+      if (!mounted) return;
+
+      if (request.loggedIn) {
+        String message = response['message'];
+        String uname = response['username'];
+        context.read<UserProvider>().setUsername(uname);
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => MyHomePage()),
+        );
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(SnackBar(content: Text("$message Welcome, $uname.")));
+      } else {
+        String message = response['message'] ?? 'Login failed';
+        setState(() {
+          if (message.toLowerCase().contains('password') && message.toLowerCase().contains('user')) {
+            _usernameError = " ";
+            _passwordError = message;
+          } else if (message.toLowerCase().contains('akun') || message.toLowerCase().contains('account')) {
+            _usernameError = message;
+          } else {
+            _passwordError = message;
+          }
+        });
+        _formKey.currentState!.validate();
+      }
+    } catch (e) {
+      // Tangani Error Koneksi (Wifi Mati)
+      if (mounted) {
+        showErrorRetryDialog(
+          context: context,
+          title: "Connection Error",
+          message: "Unable to connect to server. Please check your internet connection.",
+          onRetry: _handleLogin, // Panggil fungsi ini lagi jika Retry
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final request = context.watch<CookieRequest>();
-    
     final Color primaryBlue = const Color(0xFF1D4ED8);
     final Color textDark = const Color(0xFF111827);
     final Color textGrey = const Color(0xFF6B7280);
@@ -95,15 +160,10 @@ class _LoginPageState extends State<LoginPage> {
                     Text(
                       'Hello, welcome back to Spot Runner!',
                       textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 14.0,
-                        color: textGrey,
-                      ),
+                      style: TextStyle(fontSize: 14.0, color: textGrey),
                     ),
                     const SizedBox(height: 32.0),
 
-                    // --- FORM INPUTS ---
-                    
                     _buildLabel('Username', textLabel),
                     TextFormField(
                       controller: _usernameController,
@@ -111,17 +171,14 @@ class _LoginPageState extends State<LoginPage> {
                       onChanged: (value) {
                         if (_usernameError != null) {
                           setState(() => _usernameError = null);
-                          _formKey.currentState!.validate(); // Hapus merah saat ketik
+                          _formKey.currentState!.validate();
                         }
                       },
                       validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter your username';
-                        }
+                        if (value == null || value.isEmpty) return 'Please enter your username';
                         return _usernameError;
                       },
                     ),
-                    
                     const SizedBox(height: 20.0),
 
                     _buildLabel('Password', textLabel),
@@ -132,137 +189,44 @@ class _LoginPageState extends State<LoginPage> {
                       onChanged: (value) {
                         if (_passwordError != null) {
                           setState(() => _passwordError = null);
-                          _formKey.currentState!.validate(); // Hapus merah saat ketik
+                          _formKey.currentState!.validate();
                         }
                       },
                       validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter your password';
-                        }
+                        if (value == null || value.isEmpty) return 'Please enter your password';
                         return _passwordError;
                       },
                     ),
-
                     const SizedBox(height: 32.0),
 
-                    // --- BUTTON ---
                     ElevatedButton(
-                      onPressed: () async {
-                        // 1. Reset error state
-                        setState(() {
-                          _usernameError = null;
-                          _passwordError = null;
-                        });
-
-                        // 2. Validasi lokal (kosong atau tidak)
-                        if (_formKey.currentState!.validate()) {
-                          String username = _usernameController.text;
-                          String password = _passwordController.text;
-
-                          final response = await request.login(
-                              ApiConfig.login, {
-                            'username': username,
-                            'password': password,
-                          });
-
-                          if (request.loggedIn) {
-                            String message = response['message'];
-                            String uname = response['username'];
-
-                            context.read<UserProvider>().setUsername(uname);
-
-                            if (context.mounted) {
-                              Navigator.pushReplacement(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (context) => MyHomePage()),
-                              );
-                              ScaffoldMessenger.of(context)
-                                ..hideCurrentSnackBar()
-                                ..showSnackBar(
-                                  SnackBar(content: Text("$message Welcome, $uname.")),
-                                );
-                            }
-                          } else {
-                            if (context.mounted) {
-                              String message = response['message'] ?? 'Login failed';
-                              
-                              setState(() {
-                                // --- LOGIKA BARU UNTUK UI ---
-                                
-                                // Cek pesan spesifik dari Backend (views.py: "Username atau password salah.")
-                                // Atau pesan default Django "Please enter a correct username and password"
-                                if (message.toLowerCase().contains('password') && message.toLowerCase().contains('user')) {
-                                  // Jika error menyebut keduanya, nyalakan merah di KEDUA kolom
-                                  _usernameError = " "; // Spasi kosong agar border merah tapi teks tidak double
-                                  _passwordError = message; // Pesan lengkap ditaruh di bawah password
-                                } 
-                                // Jika error spesifik (misal "Akun dinonaktifkan")
-                                else if (message.toLowerCase().contains('akun') || message.toLowerCase().contains('account')) {
-                                    _usernameError = message;
-                                }
-                                // Fallback error
-                                else {
-                                  _passwordError = message;
-                                }
-                              });
-                              
-                              _formKey.currentState!.validate();
-                            }
-                          }
-                        }
-                      },
+                      onPressed: _isLoading ? null : _handleLogin,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: primaryBlue,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 14.0),
                         elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10.0),
-                        ),
-                        textStyle: const TextStyle(
-                          fontSize: 16.0,
-                          fontWeight: FontWeight.bold,
-                        ),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0)),
+                        textStyle: const TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold),
                       ),
-                      child: const Text('Sign In'),
+                      child: _isLoading 
+                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                        : const Text('Sign In'),
                     ),
 
                     const SizedBox(height: 32.0),
-
-                    Divider(
-                      color: Colors.grey[200],
-                      thickness: 1.5,
-                    ),
-
+                    Divider(color: Colors.grey[200], thickness: 1.5),
                     const SizedBox(height: 24.0),
 
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text(
-                          "Don't have an account? ",
-                          style: TextStyle(
-                            color: Colors.grey[600],
-                            fontSize: 14.0,
-                          ),
-                        ),
+                        Text("Don't have an account? ", style: TextStyle(color: Colors.grey[600], fontSize: 14.0)),
                         GestureDetector(
                           onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (context) => const RegisterPage()),
-                            );
+                            Navigator.push(context, MaterialPageRoute(builder: (context) => const RegisterPage()));
                           },
-                          child: Text(
-                            "Register Now",
-                            style: TextStyle(
-                              color: primaryBlue,
-                              fontSize: 14.0,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+                          child: Text("Register Now", style: TextStyle(color: primaryBlue, fontSize: 14.0, fontWeight: FontWeight.bold)),
                         ),
                       ],
                     ),
@@ -279,14 +243,7 @@ class _LoginPageState extends State<LoginPage> {
   Widget _buildLabel(String text, Color color) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 6.0),
-      child: Text(
-        text,
-        style: TextStyle(
-          fontSize: 14.0,
-          fontWeight: FontWeight.w500,
-          color: color,
-        ),
-      ),
+      child: Text(text, style: TextStyle(fontSize: 14.0, fontWeight: FontWeight.w500, color: color)),
     );
   }
 
@@ -294,24 +251,11 @@ class _LoginPageState extends State<LoginPage> {
     return InputDecoration(
       hintText: hint,
       hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
-      contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16.0, vertical: 14.0),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8.0),
-        borderSide: BorderSide(color: borderColor),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8.0),
-        borderSide: BorderSide(color: focusColor, width: 1.5),
-      ),
-      errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8.0),
-        borderSide: const BorderSide(color: Colors.red),
-      ),
-      focusedErrorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8.0),
-        borderSide: const BorderSide(color: Colors.red, width: 1.5),
-      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
+      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0), borderSide: BorderSide(color: borderColor)),
+      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0), borderSide: BorderSide(color: focusColor, width: 1.5)),
+      errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0), borderSide: const BorderSide(color: Colors.red)),
+      focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0), borderSide: const BorderSide(color: Colors.red, width: 1.5)),
       filled: true,
       fillColor: Colors.white,
     );

@@ -16,7 +16,7 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  // [TAMBAHAN 1] Controller untuk mengatur scroll
+  // [PERBAIKAN UTAMA] Inisialisasi ScrollController di sini (jangan di dalam build)
   final ScrollController _scrollController = ScrollController();
 
   String _selectedCategory = 'All';
@@ -37,7 +37,7 @@ class _MyHomePageState extends State<MyHomePage> {
   final Color _badgeBg = const Color(0xFFFEF9C2);
   final Color _badgeText = const Color(0xFF894B00);
 
-  // Helper title case
+  // [PERBAIKAN 2] Helper untuk Title Case (Huruf awal kapital)
   String _toTitleCase(String text) {
     if (text.isEmpty) return text;
     return text
@@ -66,9 +66,9 @@ class _MyHomePageState extends State<MyHomePage> {
     return listEvents;
   }
 
-  // [TAMBAHAN 2] Dispose controller saat widget dihancurkan untuk mencegah memory leak
   @override
   void dispose() {
+    // Wajib dispose controller untuk mencegah memory leak
     _scrollController.dispose();
     super.dispose();
   }
@@ -82,7 +82,7 @@ class _MyHomePageState extends State<MyHomePage> {
       appBar: CustomAppBar(),
       drawer: const LeftDrawer(),
       body: SingleChildScrollView(
-        // [TAMBAHAN 3] Pasang controller ke SingleChildScrollView
+        // [PERBAIKAN UTAMA] Pasang controller ke SingleChildScrollView
         controller: _scrollController,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -226,7 +226,7 @@ class _MyHomePageState extends State<MyHomePage> {
   Widget _buildHeroSection() {
     return SizedBox(
       width: double.infinity,
-      height: 340, // Tinggi Hero Section yang kita gunakan sebagai offset
+      height: 340, // Tinggi ini digunakan sebagai target scroll
       child: Stack(
         fit: StackFit.expand,
         children: [
@@ -278,13 +278,16 @@ class _MyHomePageState extends State<MyHomePage> {
                 ),
                 const SizedBox(height: 24),
                 ElevatedButton(
-                  // [TAMBAHAN 4] Fungsi Scroll saat tombol ditekan
+                  // [PERBAIKAN UTAMA] Fungsi Scroll
                   onPressed: () {
-                    _scrollController.animateTo(
-                      340, // Scroll ke offset 340 (tepat di bawah Hero Section)
-                      duration: const Duration(milliseconds: 800),
-                      curve: Curves.easeInOut,
-                    );
+                    // Cek apakah controller sudah terpasang ke widget sebelum scroll
+                    if (_scrollController.hasClients) {
+                      _scrollController.animateTo(
+                        340, // Scroll melewati Hero Section (tinggi 340)
+                        duration: const Duration(milliseconds: 800),
+                        curve: Curves.easeInOut,
+                      );
+                    }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFA0E228),

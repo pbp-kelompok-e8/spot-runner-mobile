@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:pbp_django_auth/pbp_django_auth.dart';
 import 'package:provider/provider.dart';
 import 'package:spot_runner_mobile/core/config/api_config.dart';
+import 'package:spot_runner_mobile/core/widgets/error_retry.dart'; // Import Widget Error
 import 'dart:convert';
 
 class EditProfilePage extends StatefulWidget {
-  // Terima data saat ini agar form terisi otomatis
   final String currentUsername;
   final String currentLocation;
 
@@ -35,13 +35,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
   void initState() {
     super.initState();
     _usernameController = TextEditingController(text: widget.currentUsername);
-    
-    // Set lokasi awal (case insensitive matching)
     if (widget.currentLocation.isNotEmpty && widget.currentLocation != '-') {
       try {
-        _baseLocation = locations.firstWhere(
-          (loc) => loc.toLowerCase() == widget.currentLocation.toLowerCase()
-        );
+        _baseLocation = locations.firstWhere((loc) => loc.toLowerCase() == widget.currentLocation.toLowerCase());
       } catch (e) {
         _baseLocation = null;
       }
@@ -60,11 +56,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
     final request = context.read<CookieRequest>();
     setState(() => _isLoading = true);
 
-    // --- URL ---
     final String url = ApiConfig.editProfile();
 
     try {
-      // --- REQUEST ---
       final response = await request.postJson(
         url,
         jsonEncode({
@@ -75,32 +69,26 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
       if (!mounted) return;
 
-      // Cek status berdasarkan respon JSON dari api_edit_profile
       if (response['status'] == 'success') {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Profil berhasil diperbarui!'), backgroundColor: Colors.green),
         );
-        
-        // Kembalikan Map data, bukan cuma boolean
         Navigator.pop(context, {
           'new_username': _usernameController.text,
           'new_location': _baseLocation ?? '',
         });
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(response['message'] ?? 'Gagal memperbarui profil'),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text(response['message'] ?? 'Gagal memperbarui profil'), backgroundColor: Colors.red),
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Colors.red,
-          ),
+        showErrorRetryDialog(
+          context: context,
+          title: "Connection Error",
+          message: "Failed to update profile. Please check your internet connection.",
+          onRetry: _saveProfile,
         );
       }
     } finally {
@@ -128,7 +116,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Username Field
               const Text("Username", style: TextStyle(fontWeight: FontWeight.w500)),
               const SizedBox(height: 8),
               TextFormField(
@@ -146,7 +133,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
               ),
               const SizedBox(height: 20),
 
-              // Location Dropdown
               const Text("Base Location", style: TextStyle(fontWeight: FontWeight.w500)),
               const SizedBox(height: 8),
               DropdownButtonFormField<String>(
@@ -160,7 +146,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 items: locations.map((loc) {
                   return DropdownMenuItem(
                     value: loc,
-                    child: Text(loc[0].toUpperCase() + loc.substring(1)), // Capitalize
+                    child: Text(loc[0].toUpperCase() + loc.substring(1)), 
                   );
                 }).toList(),
                 onChanged: (val) => setState(() => _baseLocation = val),
@@ -168,14 +154,13 @@ class _EditProfilePageState extends State<EditProfilePage> {
               
               const SizedBox(height: 32),
 
-              // Save Button
               SizedBox(
                 width: double.infinity,
                 height: 48,
                 child: ElevatedButton(
                   onPressed: _isLoading ? null : _saveProfile,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFCDFA5D), // Warna Lime Green sesuai web
+                    backgroundColor: const Color(0xFFCDFA5D),
                     foregroundColor: Colors.black,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   ),
