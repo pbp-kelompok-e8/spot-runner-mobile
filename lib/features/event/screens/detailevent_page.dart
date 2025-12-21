@@ -12,7 +12,7 @@ import 'package:spot_runner_mobile/features/review/screens/review_modal.dart';
 import 'package:spot_runner_mobile/features/review/service/review_service.dart';
 import 'package:spot_runner_mobile/core/models/review_entry.dart';
 import 'dart:convert';
-import 'package:flutter/foundation.dart' show kIsWeb;
+// import 'package:flutter/foundation.dart' show kIsWeb;
 
 class EventDetailPage extends StatefulWidget {
   final String eventId;
