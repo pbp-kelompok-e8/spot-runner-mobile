@@ -4,6 +4,7 @@ import 'package:pbp_django_auth/pbp_django_auth.dart';
 import 'package:provider/provider.dart';
 import 'package:spot_runner_mobile/core/config/api_config.dart';
 import 'package:spot_runner_mobile/features/merchandise/models/merchandise_model.dart';
+import 'package:spot_runner_mobile/core/widgets/error_retry.dart';
 
 class EditProductPage extends StatefulWidget {
   final Merchandise merchandise;
@@ -87,7 +88,25 @@ class _EditProductPageState extends State<EditProductPage> {
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        _showErrorDialog('Network error: $e');
+
+        // Tampilkan error dialog dengan retry
+        final retry = await showErrorRetryDialog(
+          context: context,
+          title: 'Update Failed',
+          message:
+              'Failed to update product. Please check your internet connection.',
+          onRetry: _submitForm,
+        );
+
+        // Jika user tidak retry, tampilkan snackbar
+        if (retry == false) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Product update cancelled'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
       }
     }
   }
@@ -190,7 +209,7 @@ class _EditProductPageState extends State<EditProductPage> {
           'Edit Merchandise',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
-        backgroundColor: Color(0xFF1D4ED8),
+        backgroundColor: const Color(0xFF1D4ED8),
         iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: SingleChildScrollView(
@@ -340,10 +359,8 @@ class _EditProductPageState extends State<EditProductPage> {
                             borderRadius: BorderRadius.circular(8),
                           ),
                           side: BorderSide(
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.primary, // Warna outline
-                            width: 1.5, // Ketebalan outline
+                            color: Theme.of(context).colorScheme.primary,
+                            width: 1.5,
                           ),
                         ),
                         child: const Text('Cancel'),

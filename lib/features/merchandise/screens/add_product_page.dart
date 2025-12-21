@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:pbp_django_auth/pbp_django_auth.dart';
 import 'package:provider/provider.dart';
 import 'package:spot_runner_mobile/core/config/api_config.dart';
+import 'package:spot_runner_mobile/core/widgets/error_handler.dart';
+import 'package:spot_runner_mobile/core/widgets/error_retry.dart';
 
 class AddProductPage extends StatefulWidget {
   const AddProductPage({super.key});
@@ -64,7 +66,25 @@ class _AddProductPageState extends State<AddProductPage> {
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        _showErrorDialog('Network error: $e');
+
+        // Tampilkan error dialog dengan retry
+        final retry = await showErrorRetryDialog(
+          context: context,
+          title: 'Connection Error',
+          message:
+              'Failed to create merchandise. Please check your internet connection.',
+          onRetry: _submitForm,
+        );
+
+        // Jika user tidak retry, tampilkan snackbar
+        if (retry == false) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Product creation cancelled'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
       }
     }
   }
@@ -87,8 +107,8 @@ class _AddProductPageState extends State<AddProductPage> {
                   IconButton(
                     icon: const Icon(Icons.close),
                     onPressed: () {
-                      Navigator.pop(context); // Close dialog
-                      Navigator.pop(context); // Back to list
+                      Navigator.pop(context);
+                      Navigator.pop(context);
                     },
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
@@ -107,8 +127,8 @@ class _AddProductPageState extends State<AddProductPage> {
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: () {
-                    Navigator.pop(context); // Close dialog
-                    Navigator.pop(context); // Back to list
+                    Navigator.pop(context);
+                    Navigator.pop(context);
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFBBF451),
@@ -163,7 +183,7 @@ class _AddProductPageState extends State<AddProductPage> {
           'Create New Merchandise',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
-        backgroundColor: Color(0xFF1D4ED8),
+        backgroundColor: const Color(0xFF1D4ED8),
         iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: SingleChildScrollView(
@@ -313,10 +333,8 @@ class _AddProductPageState extends State<AddProductPage> {
                             borderRadius: BorderRadius.circular(8),
                           ),
                           side: BorderSide(
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.primary, // Warna outline
-                            width: 1.5, // Ketebalan outline
+                            color: Theme.of(context).colorScheme.primary,
+                            width: 1.5,
                           ),
                         ),
                         child: const Text('Cancel'),
