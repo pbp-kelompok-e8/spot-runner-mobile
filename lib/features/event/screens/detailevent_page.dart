@@ -344,7 +344,8 @@ class _EventDetailPageState extends State<EventDetailPage> {
   @override
   Widget build(BuildContext context) {
     final request = context.watch<CookieRequest>();
-
+    final String userRole = request.jsonData['role'] ?? '';
+    bool isRunner = userRole.toLowerCase() == 'runner';
     return Scaffold(
       backgroundColor: Colors.white,
       body: _buildBody(request, isRunner),
