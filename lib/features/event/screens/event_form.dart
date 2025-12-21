@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:spot_runner_mobile/core/models/event_entry.dart';
 import 'package:spot_runner_mobile/core/models/user_entry.dart';
+import 'package:spot_runner_mobile/core/widgets/error_handler.dart';
 import 'package:spot_runner_mobile/core/widgets/left_drawer.dart';
 import 'package:spot_runner_mobile/features/event/screens/dashboard_screen.dart';
 import 'package:spot_runner_mobile/features/event/screens/testpage.dart';
@@ -659,7 +660,7 @@ class _EventFormPageState extends State<EventFormPage> {
                         } catch (_) {
                           events = [];
                         }
-
+                        
                         if (!context.mounted) return;
 
                         ScaffoldMessenger.of(context).showSnackBar(
@@ -672,17 +673,14 @@ class _EventFormPageState extends State<EventFormPage> {
                         Navigator.pushReplacement(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => DashboardScreen(
-                            ),
+                            builder: (context) => DashboardScreen(),
                           ),
                         );
                       } catch (e) {
                         if (!context.mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text("Error: $e"),
-                            backgroundColor: Colors.red,
-                          ),
+                        context.read<ConnectivityProvider>().setError(
+                          "Failed to create event. Please check your connection.",
+                          () {},
                         );
                       }
                     },
