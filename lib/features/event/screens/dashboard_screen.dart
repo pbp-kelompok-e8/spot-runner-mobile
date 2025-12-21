@@ -197,7 +197,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final String baseLocation = formatLocation(user.details?.baseLocation);
 
     // gunakan tanggal hari ini atau placeholder tetap jika tidak ada dari API.
-    final String joinedDate = DateFormat('dd MMM yyyy').format(DateTime.now());
+    final String lastLogin = DateFormat('dd MMM yyyy').format(DateTime.now());
 
     return Container(
       width: double.infinity,
@@ -272,7 +272,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             "$totalEvents events",
           ),
           const SizedBox(height: 16),
-          _buildDetailRow(Icons.calendar_today_outlined, "Joined", joinedDate),
+          _buildDetailRow(Icons.calendar_today_outlined, "Last Login", lastLogin),
           const SizedBox(height: 16),
           _buildDetailRow(
             Icons.location_on_outlined,
