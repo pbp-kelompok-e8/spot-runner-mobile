@@ -673,8 +673,6 @@ class _EventFormPageState extends State<EventFormPage> {
                           context,
                           MaterialPageRoute(
                             builder: (context) => DashboardScreen(
-                              userProfile: userProfile,
-                              events: events,
                             ),
                           ),
                         );
