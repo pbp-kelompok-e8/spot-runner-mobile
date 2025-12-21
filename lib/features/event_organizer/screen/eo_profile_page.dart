@@ -50,8 +50,8 @@ class _EOProfilePageState extends State<EOProfilePage> {
           // Get events by this EO
           await _loadEOEvents(eoIdToFetch);
           
-          // Calculate average rating from events
-          _calculateAverageRating();
+          // Calculate average rating from events - GUNAKAN AWAIT
+          await _calculateAverageRating();
         }
       }
       
@@ -59,7 +59,7 @@ class _EOProfilePageState extends State<EOProfilePage> {
         _isLoading = false;
       });
     } catch (e) {
-      print("Error loading EO profile: $e");
+      print("❌ Error loading EO profile: $e");
       setState(() {
         _isLoading = false;
       });
@@ -82,38 +82,66 @@ class _EOProfilePageState extends State<EOProfilePage> {
             return eventOwnerId.toString() == eoId;
           }).toList();
         });
+        
+        print("✅ Loaded ${_events.length} events for EO: $eoId");
       }
     } catch (e) {
-      print("Error loading events: $e");
+      print("❌ Error loading events: $e");
     }
   }
 
-  void _calculateAverageRating() async {
+  Future<void> _calculateAverageRating() async {
     final request = context.read<CookieRequest>();
     double totalRating = 0;
     int reviewCount = 0;
     
+    print("📊 Calculating average rating for ${_events.length} events...");
+    
     for (var event in _events) {
       try {
-        final reviewResponse = await request.get(
-          ApiConfig.reviewsByEvent(event['id'].toString()),
-        );
+        final eventId = event['id'].toString();
         
-        if (reviewResponse['status'] == 'success' && reviewResponse['data'] != null) {
-          List reviews = reviewResponse['data'];
-          for (var review in reviews) {
-            totalRating += review['rating'];
-            reviewCount++;
+        // FIX: Gunakan endpoint yang benar dari review_service
+        final url = '${ApiConfig.baseUrl}/api/reviews/?event_id=$eventId';
+        print("📡 Fetching reviews from: $url");
+        
+        final reviewResponse = await request.get(url);
+        print("📦 Review response: $reviewResponse");
+        
+        if (reviewResponse['status'] == 'success') {
+          // FIX: Handle response structure dari ReviewEntry
+          if (reviewResponse['data'] != null && reviewResponse['data'] is List) {
+            List reviews = reviewResponse['data'];
+            print("✅ Found ${reviews.length} reviews for event $eventId");
+            
+            for (var review in reviews) {
+              // Pastikan rating adalah number
+              var rating = review['rating'];
+              if (rating != null) {
+                if (rating is int) {
+                  totalRating += rating.toDouble();
+                } else if (rating is double) {
+                  totalRating += rating;
+                } else if (rating is String) {
+                  totalRating += double.tryParse(rating) ?? 0;
+                }
+                reviewCount++;
+                print("  ⭐ Rating: $rating");
+              }
+            }
           }
         }
       } catch (e) {
-        print("Error getting reviews: $e");
+        print("❌ Error getting reviews for event ${event['id']}: $e");
       }
     }
+    
+    print("📊 Total Rating: $totalRating, Review Count: $reviewCount");
     
     setState(() {
       _totalReviews = reviewCount;
       _averageRating = reviewCount > 0 ? totalRating / reviewCount : 0.0;
+      print("✅ Average Rating: $_averageRating ($_totalReviews reviews)");
     });
   }
 
@@ -277,6 +305,7 @@ class _EOProfilePageState extends State<EOProfilePage> {
                           color: Color(0xFF1F2937),
                         ),
                       ),
+                      const SizedBox(width: 4),
                       Text(
                         '/5.0 rating ($_totalReviews reviews)',
                         style: TextStyle(

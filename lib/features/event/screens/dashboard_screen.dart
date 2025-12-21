@@ -23,13 +23,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
   List<EventEntry> _events = [];
   bool _isLoading = true;
 
+  double _averageRating = 0.0;
+  int _totalReviews = 0;
+
   @override
   void initState() {
     super.initState();
     _loadData();
   }
 
-  // Fungsi untuk load semua data (profile + events milik EO yang login)
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
 
@@ -52,9 +54,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     } catch (e) {
       _userProfile = null;
       hasConnectionError = true;
+      print("❌ Error loading profile: $e");
     }
 
-    // Load events dan filter hanya milik EO yang login
     try {
       final eventsResp = await request.get(ApiConfig.eventJson);
       if (eventsResp is List) {
@@ -62,20 +64,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
             .map((e) => EventEntry.fromJson(Map<String, dynamic>.from(e)))
             .toList();
 
-        // Filter: hanya event yang userEo.id == currentUserId
         _events = allEvents
             .where((event) => event.userEo.username == currentUserName)
             .toList();
+        
+        print("✅ Loaded ${_events.length} events for EO: $currentUserName");
+        
+        await _calculateAverageRating(request);
       }
     } catch (e) {
       _events = [];
       hasConnectionError = true;
+      print("❌ Error loading events: $e");
     }
 
     if (mounted) {
       setState(() => _isLoading = false);
 
-      // Tampilkan error overlay jika ada connection error
       if (hasConnectionError) {
         connectivity.setError(
           "Failed to load data. Please check your connection.",
@@ -85,11 +90,65 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  // Fungsi untuk menghapus event dari list lokal
+  Future<void> _calculateAverageRating(CookieRequest request) async {
+    double totalRating = 0;
+    int reviewCount = 0;
+    
+    print("📊 Calculating average rating for ${_events.length} events...");
+    
+    for (var event in _events) {
+      try {
+        final eventId = event.id.toString();
+
+        final url = '${ApiConfig.baseUrl}/api/reviews/?event_id=$eventId';
+        print("📡 Fetching reviews from: $url");
+        
+        final reviewResponse = await request.get(url);
+        print("📦 Review response for event $eventId: $reviewResponse");
+        
+        if (reviewResponse['status'] == 'success') {
+          // Handle response structure dari ReviewEntry
+          if (reviewResponse['data'] != null && reviewResponse['data'] is List) {
+            List reviews = reviewResponse['data'];
+            print("✅ Found ${reviews.length} reviews for event $eventId");
+            
+            for (var review in reviews) {
+              // Pastikan rating adalah number
+              var rating = review['rating'];
+              if (rating != null) {
+                if (rating is int) {
+                  totalRating += rating.toDouble();
+                } else if (rating is double) {
+                  totalRating += rating;
+                } else if (rating is String) {
+                  totalRating += double.tryParse(rating) ?? 0;
+                }
+                reviewCount++;
+                print("  ⭐ Rating: $rating");
+              }
+            }
+          }
+        }
+      } catch (e) {
+        print("❌ Error getting reviews for event ${event.id}: $e");
+      }
+    }
+    
+    print("📊 Total Rating: $totalRating, Review Count: $reviewCount");
+    
+    setState(() {
+      _totalReviews = reviewCount;
+      _averageRating = reviewCount > 0 ? totalRating / reviewCount : 0.0;
+      print("✅ Average Rating: $_averageRating ($_totalReviews reviews)");
+    });
+  }
+
   void _removeEvent(String eventId) {
     setState(() {
       _events.removeWhere((e) => e.id.toString() == eventId);
     });
+
+    _calculateAverageRating(context.read<CookieRequest>());
   }
 
   @override
@@ -103,7 +162,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       );
     }
 
-    // Memastikan tidak error jika userProfile null
     final safeUserProfile =
         _userProfile ??
         UserProfile(
@@ -123,7 +181,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildProfileSection(safeUserProfile),
+            _buildProfileSection(safeUserProfile, _averageRating, _totalReviews),
             const SizedBox(height: 32),
             const Text(
               "Your Event",
@@ -149,6 +207,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   return EventCard(
                     event: _events[index],
                     onDeleted: () => _removeEvent(_events[index].id.toString()),
+                    onRefresh: () => _loadData(), // Refresh setelah edit
                   );
                 },
               ),
@@ -172,16 +231,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildProfileSection(UserProfile user) {
-    // MENGAMBIL NILAI VALID DARI MODEL
+  Widget _buildProfileSection(UserProfile user, double calculatedRating, int totalReviews) {
     final String username = user.username;
     final String? profilePicture = user.details?.profilePicture;
 
-    // Mengambil data dari nested 'details' dengan fallback nilai default
-    final int totalEvents = user.details?.totalEvents ?? 0;
-    final double rating = user.details?.rating ?? 0.0;
+    final int totalEvents = user.details?.totalEvents ?? _events.length;
 
-    // Format baseLocation: kapital di awal dan setelah _, hilangkan _
     String formatLocation(String? location) {
       if (location == null || location.isEmpty) return "Location not set";
       return location
@@ -196,8 +251,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     final String baseLocation = formatLocation(user.details?.baseLocation);
 
-    // gunakan tanggal hari ini atau placeholder tetap jika tidak ada dari API.
-    final String lastLogin = DateFormat('dd MMM yyyy').format(DateTime.now());
+    final String joinedDate = DateFormat('dd MMM yyyy').format(DateTime.now());
 
     return Container(
       width: double.infinity,
@@ -296,7 +350,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     const Icon(Icons.star, color: Color(0xFFA3E635), size: 28),
                     const SizedBox(width: 8),
                     Text(
-                      rating.toStringAsFixed(1), // Nilai valid dari model
+                      // GUNAKAN RATING YANG SUDAH DIHITUNG
+                      calculatedRating > 0 
+                          ? calculatedRating.toStringAsFixed(2)
+                          : '0.00',
                       style: const TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.w800,
@@ -305,7 +362,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      "/5.0 rating",
+                      "/5.0 rating ($totalReviews reviews)",
                       style: TextStyle(color: Colors.grey[500], fontSize: 12),
                     ),
                   ],
@@ -374,11 +431,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 }
 
+// EventCard tidak perlu diubah, tetap sama seperti sebelumnya
 class EventCard extends StatelessWidget {
   final EventEntry event;
-  // Callback untuk menghapus event dari UI setelah delete berhasil
   final VoidCallback? onDeleted;
-  // Callback untuk refresh data setelah edit
   final VoidCallback? onRefresh;
 
   const EventCard({
@@ -388,10 +444,8 @@ class EventCard extends StatelessWidget {
     this.onRefresh,
   }) : super(key: key);
 
-  // 1. LOGIKA AUTO-UPDATE STATUS
   String _calculateDynamicStatus(DateTime eventDate) {
     final now = DateTime.now();
-    // Normalisasi waktu ke jam 00:00:00 agar perbandingan akurat per hari
     final today = DateTime(now.year, now.month, now.day);
     final eventDay = DateTime(eventDate.year, eventDate.month, eventDate.day);
 
@@ -400,12 +454,10 @@ class EventCard extends StatelessWidget {
     } else if (today.isAtSameMomentAs(eventDay)) {
       return 'ongoing';
     } else {
-      // Jika sudah lewat 1 hari atau lebih
       return 'finished';
     }
   }
 
-  // 2. LOGIKA DELETE API
   Future<void> _deleteEvent(BuildContext context, String id) async {
     final scaffoldMessenger = ScaffoldMessenger.of(context);
     final request = context.read<CookieRequest>();
@@ -479,7 +531,6 @@ class EventCard extends StatelessWidget {
 
     return InkWell(
       onTap: () async {
-        // Navigasi ke halaman detail
         final result = await Navigator.push(
           context,
           MaterialPageRoute(
@@ -487,7 +538,6 @@ class EventCard extends StatelessWidget {
           ),
         );
 
-        // Jika ada perubahan (edit/delete) di detail page, refresh dashboard
         if ((result == true) && onRefresh != null) {
           onRefresh!();
         }
@@ -504,7 +554,6 @@ class EventCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Status Chip
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
@@ -596,7 +645,6 @@ class EventCard extends StatelessWidget {
                           ),
                         ),
                       );
-                      // Refresh data saat kembali dari edit
                       if (result == true && onRefresh != null) {
                         onRefresh!();
                       }
@@ -617,7 +665,6 @@ class EventCard extends StatelessWidget {
                 const SizedBox(width: 12),
                 Expanded(
                   child: ElevatedButton.icon(
-                    // LOGIKA DELETE DI SINI
                     onPressed: () {
                       showDialog(
                         context: context,
