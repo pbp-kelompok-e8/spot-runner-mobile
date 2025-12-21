@@ -1,10 +1,10 @@
-//lib\features\event\screens\detailevent_page.dart
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'dart:async';
 import 'package:provider/provider.dart';
 import 'package:pbp_django_auth/pbp_django_auth.dart';
 import 'package:spot_runner_mobile/core/widgets/error_handler.dart';
+import 'package:spot_runner_mobile/core/widgets/error_retry.dart';
 import 'package:spot_runner_mobile/features/event/screens/dashboard_screen.dart';
 import 'package:spot_runner_mobile/features/event/screens/editevent_form.dart';
 import 'package:spot_runner_mobile/features/event/screens/testpage.dart';
@@ -13,8 +13,6 @@ import 'package:spot_runner_mobile/features/review/screens/review_card.dart';
 import 'package:spot_runner_mobile/features/review/screens/review_modal.dart';
 import 'package:spot_runner_mobile/features/review/service/review_service.dart';
 import 'package:spot_runner_mobile/core/models/review_entry.dart';
-import 'dart:convert';
-// import 'package:flutter/foundation.dart' show kIsWeb;
 
 class EventDetailPage extends StatefulWidget {
   final String eventId;
@@ -34,6 +32,21 @@ class _EventDetailPageState extends State<EventDetailPage> {
   List<Datum> _reviews = [];
   bool _isLoadingReviews = true;
   bool _isBookingLoading = false;
+
+  // Map untuk konversi Display Name -> Value (Sesuai models.py Django)
+  final Map<String, String> _categoryMap = {
+    'Fun Run (3K)': 'fun_run',
+    '5K Race': '5k',
+    '10K Race': '10k',
+    'Half Marathon (21K)': 'half_marathon',
+    'Full Marathon (42K)': 'full_marathon',
+  };
+
+  // Helper untuk mendapatkan value kategori yang benar
+  String _getCategoryValue(String displayName) {
+    // Coba cari di map, jika tidak ada, ubah spasi jadi underscore & lowercase
+    return _categoryMap[displayName] ?? displayName.toLowerCase().replaceAll(' ', '_');
+  }
 
   @override
   void initState() {
@@ -161,7 +174,6 @@ class _EventDetailPageState extends State<EventDetailPage> {
     });
 
     final request = context.read<CookieRequest>();
-    // Ambil username dari session
     final username = request.jsonData['username'];
 
     if (username == null) {
@@ -173,24 +185,17 @@ class _EventDetailPageState extends State<EventDetailPage> {
     }
 
     // URL: /api/participate/<username>/<event_id>/<category>/
-    final url = ApiConfig.participateUrl(
-      username,
-      widget.eventId,
-      _selectedCategory!,
-    );
+    final String categoryValue = _getCategoryValue(_selectedCategory!);
+
+    final url = ApiConfig.participateUrl(username, widget.eventId, categoryValue);
 
     try {
-      // Panggil API (POST)
       final response = await request.post(url, {});
 
       if (mounted) {
         if (response['status'] == 'success') {
-          // BERHASIL: Tampilkan pesan & Refresh Data
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(response['message']),
-              backgroundColor: Colors.green,
-            ),
+            SnackBar(content: Text(response['message']), backgroundColor: Colors.green),
           );
 
           // Refresh detail event agar kuota/status terupdate
@@ -199,28 +204,22 @@ class _EventDetailPageState extends State<EventDetailPage> {
           });
           _loadEventDetail();
         } else if (response['status'] == 'warning') {
-          // WARNING: Sudah terdaftar
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(response['message']),
-              backgroundColor: Colors.orange,
-            ),
+            SnackBar(content: Text(response['message']), backgroundColor: Colors.orange),
           );
         } else {
-          // ERROR LAIN
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(response['message'] ?? "Booking failed"),
-              backgroundColor: Colors.red,
-            ),
+            SnackBar(content: Text(response['message'] ?? "Booking failed"), backgroundColor: Colors.red),
           );
         }
       }
     } catch (e) {
       if (mounted) {
-        context.read<ConnectivityProvider>().setError(
-          "Failed to make a booking. Please check your connection.",
-          () => _handleBooking(),
+        showErrorRetryDialog(
+          context: context,
+          title: "Connection Error",
+          message: "Failed to make a booking. Please check your connection.",
+          onRetry: () => _handleBooking(),
         );
       }
     } finally {
@@ -240,10 +239,7 @@ class _EventDetailPageState extends State<EventDetailPage> {
       if (response['status'] == 'success' || response['message'] == 'success') {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text("Event deleted successfully!"),
-              backgroundColor: Colors.green,
-            ),
+            const SnackBar(content: Text("Event deleted successfully!"), backgroundColor: Colors.green),
           );
           Navigator.pushReplacement(
             context,
@@ -253,10 +249,7 @@ class _EventDetailPageState extends State<EventDetailPage> {
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text("Failed to delete event."),
-              backgroundColor: Colors.red,
-            ),
+            const SnackBar(content: Text("Failed to delete event."), backgroundColor: Colors.red),
           );
         }
       }
@@ -270,10 +263,11 @@ class _EventDetailPageState extends State<EventDetailPage> {
     }
   }
 
+  // --- REVIEW FUNCTIONS ---
   Future<void> _handleEditReview(Datum review) async {
     final result = await showDialog<bool>(
       context: context,
-      builder: (context) => ReviewModal(
+      builder: (dialogContext) => ReviewModal(
         eventName: review.eventName,
         eventId: review.eventId,
         reviewId: review.id,
@@ -281,15 +275,20 @@ class _EventDetailPageState extends State<EventDetailPage> {
         initialReview: review.reviewText,
         onSubmit: (rating, reviewText) async {
           final request = context.read<CookieRequest>();
-          final response = await ReviewService.editReview(
-            request,
-            reviewId: review.id,
-            rating: rating,
-            reviewText: reviewText,
-          );
+          try {
+            final response = await ReviewService.editReview(
+              request,
+              reviewId: review.id,
+              rating: rating,
+              reviewText: reviewText,
+            );
 
-          if (!response['success']) {
-            throw Exception(response['message']);
+            if (!response['success']) {
+              throw Exception(response['message']);
+            }
+          } catch (e) {
+            // Re-throw to be caught by ReviewModal
+            rethrow;
           }
         },
       ),
@@ -312,16 +311,16 @@ class _EventDetailPageState extends State<EventDetailPage> {
   Future<void> _handleDeleteReview(String reviewId) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Delete Review'),
         content: const Text('Are you sure you want to delete this review?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
+            onPressed: () => Navigator.pop(dialogContext, false),
             child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: () => Navigator.pop(context, true),
+            onPressed: () => Navigator.pop(dialogContext, true),
             style: TextButton.styleFrom(foregroundColor: Colors.red),
             child: const Text('Delete'),
           ),
@@ -331,23 +330,34 @@ class _EventDetailPageState extends State<EventDetailPage> {
 
     if (!mounted || confirmed != true) return;
 
-    final request = context.read<CookieRequest>();
-    final response = await ReviewService.deleteReview(request, reviewId);
-
-    if (!mounted) return;
-
-    if (response['success']) {
-      await _loadReviews();
+    try {
+      final request = context.read<CookieRequest>();
+      final response = await ReviewService.deleteReview(request, reviewId);
 
       if (!mounted) return;
-    }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(response['message']),
-        backgroundColor: response['success'] ? Colors.green : Colors.red,
-      ),
-    );
+      if (response['success']) {
+        await _loadReviews();
+
+        if (!mounted) return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(response['message']),
+          backgroundColor: response['success'] ? Colors.green : Colors.red,
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        showErrorRetryDialog(
+          context: context,
+          title: "Connection Error",
+          message: "Failed to delete review. Please check your connection.",
+          onRetry: () => _handleDeleteReview(reviewId),
+        );
+      }
+    }
   }
 
   @override
@@ -355,7 +365,6 @@ class _EventDetailPageState extends State<EventDetailPage> {
     final request = context.watch<CookieRequest>();
     final String userRole = request.jsonData['role'] ?? '';
     bool isRunner = userRole.toLowerCase() == 'runner';
-
     return Scaffold(
       backgroundColor: Colors.white,
       body: _buildBody(request, isRunner),
@@ -644,16 +653,7 @@ class _EventDetailPageState extends State<EventDetailPage> {
                             _isBookingLoading ||
                             !isRunner)
                         ? null
-                        : () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  "Booking category: $_selectedCategory",
-                                ),
-                                backgroundColor: Colors.green,
-                              ),
-                            );
-                          },
+                        : _handleBooking,
                     child: const Text(
                       "Book Now",
                       style: TextStyle(
@@ -836,73 +836,10 @@ class _EventDetailPageState extends State<EventDetailPage> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  label,
-                  style: TextStyle(fontSize: 13, color: Colors.grey[600]),
-                ),
-                Text(
-                  value,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                Text(label, style: TextStyle(fontSize: 13, color: Colors.grey[600])),
+                Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
               ],
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildReviewCard(String name, double rating) {
-    return Container(
-      width: 160,
-      margin: const EdgeInsets.only(right: 10),
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.grey[200]!),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            name,
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-          ),
-          const Text(
-            "Participant",
-            style: TextStyle(fontSize: 9, color: Colors.grey),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            "Lorem ipsum dolor sit amet...",
-            style: TextStyle(fontSize: 10, color: Colors.grey[600]),
-            maxLines: 3,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const Spacer(),
-          Row(
-            children: [
-              const Icon(Icons.star, color: Colors.greenAccent, size: 14),
-              const SizedBox(width: 4),
-              Text(
-                rating.toString(),
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
-                ),
-              ),
-            ],
           ),
         ],
       ),
@@ -914,20 +851,11 @@ class _EventDetailPageState extends State<EventDetailPage> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text("Delete this Event?", style: TextStyle(fontSize: 16)),
-        content: const Text(
-          "Are you sure you want to delete this event? This action cannot be undone.",
-          style: TextStyle(fontSize: 13),
-        ),
+        content: const Text("Are you sure you want to delete this event? This action cannot be undone.", style: TextStyle(fontSize: 13)),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text("Cancel"),
-          ),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-            ),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
             onPressed: () {
               Navigator.pop(ctx);
               _deleteEvent(widget.eventId);
@@ -944,11 +872,7 @@ class ImageSliderWidget extends StatefulWidget {
   final List<String> imageUrls;
   final VoidCallback onBackPressed;
 
-  const ImageSliderWidget({
-    super.key,
-    required this.imageUrls,
-    required this.onBackPressed,
-  });
+  const ImageSliderWidget({super.key, required this.imageUrls, required this.onBackPressed});
 
   @override
   State<ImageSliderWidget> createState() => _ImageSliderWidgetState();
@@ -970,11 +894,7 @@ class _ImageSliderWidgetState extends State<ImageSliderWidget> {
       _autoSlideTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
         if (mounted && _pageController.hasClients) {
           int nextIndex = (_currentImageIndex + 1) % widget.imageUrls.length;
-          _pageController.animateToPage(
-            nextIndex,
-            duration: const Duration(milliseconds: 400),
-            curve: Curves.easeInOut,
-          );
+          _pageController.animateToPage(nextIndex, duration: const Duration(milliseconds: 400), curve: Curves.easeInOut);
         }
       });
     }
@@ -997,80 +917,42 @@ class _ImageSliderWidgetState extends State<ImageSliderWidget> {
             controller: _pageController,
             physics: const BouncingScrollPhysics(),
             itemCount: widget.imageUrls.length,
-            onPageChanged: (index) {
-              setState(() {
-                _currentImageIndex = index;
-              });
-            },
+            onPageChanged: (index) => setState(() => _currentImageIndex = index),
             itemBuilder: (context, index) {
               return Image.network(
                 widget.imageUrls[index],
                 fit: BoxFit.cover,
                 errorBuilder: (ctx, err, stack) => Container(
                   color: Colors.grey[200],
-                  child: const Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.broken_image, size: 50, color: Colors.grey),
-                      Text(
-                        "Failed to load image",
-                        style: TextStyle(color: Colors.grey),
-                      ),
-                    ],
-                  ),
+                  child: const Center(child: Icon(Icons.broken_image, size: 50, color: Colors.grey)),
                 ),
               );
             },
           ),
         ),
-
         Positioned(
-          top: 40,
-          left: 10,
+          top: 40, left: 10,
           child: CircleAvatar(
             backgroundColor: Colors.white.withOpacity(0.7),
-            child: IconButton(
-              icon: const Icon(Icons.arrow_back, color: Colors.black),
-              onPressed: widget.onBackPressed,
-            ),
+            child: IconButton(icon: const Icon(Icons.arrow_back, color: Colors.black), onPressed: widget.onBackPressed),
           ),
         ),
-
         if (widget.imageUrls.length > 1)
           Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
+            bottom: 0, left: 0, right: 0,
             child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.bottomCenter,
-                  end: Alignment.topCenter,
-                  colors: [Colors.black.withOpacity(0.7), Colors.transparent],
-                ),
-              ),
+              decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.bottomCenter, end: Alignment.topCenter, colors: [Colors.black.withOpacity(0.7), Colors.transparent])),
               padding: const EdgeInsets.symmetric(vertical: 15),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: widget.imageUrls.asMap().entries.map((entry) {
                   return GestureDetector(
-                    onTap: () {
-                      _pageController.animateToPage(
-                        entry.key,
-                        duration: const Duration(milliseconds: 300),
-                        curve: Curves.easeInOut,
-                      );
-                    },
+                    onTap: () => _pageController.animateToPage(entry.key, duration: const Duration(milliseconds: 300), curve: Curves.easeInOut),
                     child: Container(
                       width: _currentImageIndex == entry.key ? 24.0 : 8.0,
                       height: 8.0,
                       margin: const EdgeInsets.symmetric(horizontal: 4.0),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(4),
-                        color: _currentImageIndex == entry.key
-                            ? Colors.white
-                            : Colors.white.withOpacity(0.5),
-                      ),
+                      decoration: BoxDecoration(borderRadius: BorderRadius.circular(4), color: _currentImageIndex == entry.key ? Colors.white : Colors.white.withOpacity(0.5)),
                     ),
                   );
                 }).toList(),
@@ -1086,11 +968,7 @@ class EventTimerWidget extends StatefulWidget {
   final DateTime targetDate;
   final String? deadlineString;
 
-  const EventTimerWidget({
-    super.key,
-    required this.targetDate,
-    required this.deadlineString,
-  });
+  const EventTimerWidget({super.key, required this.targetDate, required this.deadlineString});
 
   @override
   State<EventTimerWidget> createState() => _EventTimerWidgetState();
@@ -1105,11 +983,7 @@ class _EventTimerWidgetState extends State<EventTimerWidget> {
     super.initState();
     _calculateDiff();
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (mounted) {
-        setState(() {
-          _calculateDiff();
-        });
-      }
+      if (mounted) setState(() => _calculateDiff());
     });
   }
 
@@ -1127,58 +1001,33 @@ class _EventTimerWidgetState extends State<EventTimerWidget> {
   Widget _buildTimeBox(String value, String label) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: Colors.grey[300]!),
-      ),
-      child: Column(
-        children: [
-          Text(
-            value,
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-          ),
-          Text(label, style: const TextStyle(fontSize: 10, color: Colors.grey)),
-        ],
-      ),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(6), border: Border.all(color: Colors.grey[300]!)),
+      child: Column(children: [Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)), Text(label, style: const TextStyle(fontSize: 10, color: Colors.grey))]),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    String days = diff.inDays.toString();
-    String hours = (diff.inHours % 24).toString();
-    String minutes = (diff.inMinutes % 60).toString();
-
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.9),
-        borderRadius: BorderRadius.circular(12),
-      ),
+      decoration: BoxDecoration(color: Colors.white.withOpacity(0.9), borderRadius: BorderRadius.circular(12)),
       child: Column(
         children: [
-          Text(
-            "Registration Closes In",
-            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
-          ),
+          const Text("Registration Closes In", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
           const SizedBox(height: 8),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              _buildTimeBox(days, "Days"),
+              _buildTimeBox(diff.inDays.toString(), "Days"),
               const SizedBox(width: 8),
-              _buildTimeBox(hours, "Hours"),
+              _buildTimeBox((diff.inHours % 24).toString(), "Hours"),
               const SizedBox(width: 8),
-              _buildTimeBox(minutes, "Mins"),
+              _buildTimeBox((diff.inMinutes % 60).toString(), "Mins"),
             ],
           ),
           const SizedBox(height: 8),
-          Text(
-            "Deadline: ${widget.deadlineString != null ? DateFormat('dd MMM, HH:mm').format(DateTime.parse(widget.deadlineString!)) : '-'}",
-            style: TextStyle(fontSize: 12, color: Colors.black),
-          ),
+          Text("Deadline: ${widget.deadlineString != null ? DateFormat('dd MMM, HH:mm').format(DateTime.parse(widget.deadlineString!)) : '-'}", style: const TextStyle(fontSize: 12, color: Colors.black)),
         ],
       ),
     );

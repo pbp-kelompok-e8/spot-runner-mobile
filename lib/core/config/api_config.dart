@@ -3,7 +3,7 @@
 class ApiConfig {
   /// Runtime-aware base URL (localhost for web, 10.0.2.2 for Android emulator)
   static const String baseUrl =
-      'https://william-jonnatan-spotrunner.pbp.cs.ui.ac.id';
+      'http://localhost:8000';
   // static String get baseUrl => kIsWeb ? 'http://localhost:8000' : 'http://10.0.2.2:8000';
 
   static String get logout => '$baseUrl/auth/logout/';
@@ -18,7 +18,7 @@ class ApiConfig {
   static String reviewsByEvent(String eventId) =>'$baseUrl/review/api/reviews/?event_id=$eventId';
   static String eventReviews(String eventId) =>'$baseUrl/review/api/reviews/event/$eventId/';
   
-  static String editReview(String reviewId) =>'$baseUrl/review/$reviewId/edit/';
+  static String editReview(String reviewId) =>'$baseUrl/review/edit-flutter/$reviewId/';
   static String deleteReview(String reviewId) =>'$baseUrl/review/$reviewId/delete/';
   
   static String editReviewFlutter(String reviewId) =>'$baseUrl/review/edit-flutter/$reviewId/';
