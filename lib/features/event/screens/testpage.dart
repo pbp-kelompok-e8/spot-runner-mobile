@@ -19,6 +19,16 @@ class EventListPage extends StatefulWidget {
 }
 
 class _EventListPageState extends State<EventListPage> {
+  // State untuk menyimpan review status
+  Map<String, bool> _userReviewStatus = {};
+  bool _isLoadingReviews = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkUserReviews();
+  }
+
   Future<List<dynamic>> fetchEvents() async {
     var url = Uri.parse(ApiConfig.eventJson); 
     var response = await http.get(
@@ -32,6 +42,59 @@ class _EventListPageState extends State<EventListPage> {
     } else {
       throw Exception('Failed to fetch events');
     }
+  }
+
+  // Method untuk cek review status user
+  Future<void> _checkUserReviews() async {
+    final request = context.read<CookieRequest>();
+    
+    if (!request.loggedIn) {
+      print('❌ User not logged in');
+      return;
+    }
+    
+    setState(() {
+      _isLoadingReviews = true;
+    });
+
+    try {
+      print('🔄 Fetching user reviews...');
+      
+      // Get all reviews dari user ini
+      final reviewEntry = await ReviewService.getAllReviews(request);
+      
+      print('📦 Got ${reviewEntry?.data.length ?? 0} reviews');
+      
+      // Build map: eventId -> hasReviewed
+      final Map<String, bool> statusMap = {};
+      for (var review in reviewEntry?.data ?? []) {
+        print('✅ Review found for event: ${review.eventId}');
+        statusMap[review.eventId] = true;
+      }
+      
+      print('📊 Review status map: $statusMap');
+      
+      if (mounted) {
+        setState(() {
+          _userReviewStatus = statusMap;
+          _isLoadingReviews = false;
+        });
+        print('✅ Review status updated in UI');
+      }
+    } catch (e) {
+      print('❌ Error checking reviews: $e');
+      if (mounted) {
+        setState(() {
+          _userReviewStatus = {}; // Reset ke empty map
+          _isLoadingReviews = false;
+        });
+      }
+    }
+  }
+
+  // Method untuk cek apakah user sudah review event tertentu
+  bool _hasUserReviewedEvent(String eventId) {
+    return _userReviewStatus[eventId] == true;
   }
 
   Future<void> _handleAddReview(BuildContext context, Map<String, dynamic> event) async {
@@ -56,8 +119,10 @@ class _EventListPageState extends State<EventListPage> {
       builder: (context) => ReviewModal(
         eventName: event['name'],
         eventId: event['id'].toString(),
+        reviewId: null, // null = mode create
+        initialRating: 5,
+        initialReview: '',
         onSubmit: (rating, reviewText) async {
-          // Submit review
           final response = await ReviewService.createReview(
             request,
             eventId: event['id'].toString(),
@@ -65,22 +130,27 @@ class _EventListPageState extends State<EventListPage> {
             reviewText: reviewText,
           );
 
-          if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(response['message']),
-                backgroundColor: response['success'] ? Colors.green : Colors.red,
-              ),
-            );
+          if (!response['success']) {
+            throw Exception(response['message']);
           }
         },
       ),
     );
 
-    // Refresh list if review was added
-    if (result == true && mounted) {
-      setState(() {});
-    }
+    if (!mounted || result != true) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Review submitted successfully'),
+        backgroundColor: Colors.green,
+      ),
+    );
+
+    // Refresh review status
+    await _checkUserReviews();
+    
+    // Refresh list
+    setState(() {});
   }
 
   @override
@@ -129,137 +199,161 @@ class _EventListPageState extends State<EventListPage> {
                 bool isRunner = userRole.toLowerCase() == 'runner';
 
                 return Card(
-  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-  elevation: 4,
-  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-  child: Column( // Menggunakan Column agar tombol Review bisa ditaruh di bawah ListTile
-    children: [
-      ListTile(
-        onTap: () async {
-          final result = await Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => EventDetailPage(eventId: event['id'].toString()),
-            ),
-          );
-          if (result == true) {
-            setState(() {});
-          }
-        },
-        contentPadding: const EdgeInsets.all(16),
-        title: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Expanded(
-              child: Text(
-                event['name'],
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-              ),
-            ),
-            if (isFinished)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Text(
-                  'Finished',
-                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
-                ),
-              ),
-          ],
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 8),
-            Text(
-              event['description'], 
-              maxLines: 2, 
-              overflow: TextOverflow.ellipsis
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                const Icon(Icons.location_on, size: 16, color: Colors.grey),
-                const SizedBox(width: 4),
-                Text(event['location']?.toString().replaceAll('_', ' ') ?? '-'),
-              ],
-            ),
-          ],
-        ),
-        trailing: isOwner
-            ? Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.edit, color: Color(0xFF1D4ED8)),
-                    onPressed: () async {
-                      final result = await Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => EditEventFormPage(event: event),
-                        ),
-                      );
-                      if (result == true) {
-                        setState(() {});
-                      }
-                    },
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.delete, color: Colors.red),
-                    onPressed: () {
-                      showDialog(
-                        context: context,
-                        builder: (context) => AlertDialog(
-                          title: const Text('Delete this event?'),
-                          content: Text('Are you sure you want to delete "${event['name']}"?'),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(context),
-                              child: const Text('Cancel'),
+                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  elevation: 4,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  child: Column(
+                    children: [
+                      ListTile(
+                        onTap: () async {
+                          final result = await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => EventDetailPage(eventId: event['id'].toString()),
                             ),
-                            TextButton(
-                              onPressed: () async {
-                                Navigator.pop(context);
-                                await _deleteEvent(event['id'].toString());
-                              },
-                              child: const Text('Delete', style: TextStyle(color: Colors.red)),
+                          );
+                          // Refresh review status setelah kembali dari detail page
+                          if (result == true || result == null) {
+                            await _checkUserReviews();
+                            setState(() {});
+                          }
+                        },
+                        contentPadding: const EdgeInsets.all(16),
+                        title: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                event['name'],
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                              ),
+                            ),
+                            if (isFinished)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[300],
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Text(
+                                  'Finished',
+                                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                          ],
+                        ),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(height: 8),
+                            Text(
+                              event['description'], 
+                              maxLines: 2, 
+                              overflow: TextOverflow.ellipsis
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                const Icon(Icons.location_on, size: 16, color: Colors.grey),
+                                const SizedBox(width: 4),
+                                Text(event['location']?.toString().replaceAll('_', ' ') ?? '-'),
+                              ],
                             ),
                           ],
                         ),
-                      );
-                    },
+                        trailing: isOwner
+                            ? Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(Icons.edit, color: Color(0xFF1D4ED8)),
+                                    onPressed: () async {
+                                      final result = await Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => EditEventFormPage(event: event),
+                                        ),
+                                      );
+                                      if (result == true) {
+                                        setState(() {});
+                                      }
+                                    },
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.delete, color: Colors.red),
+                                    onPressed: () {
+                                      showDialog(
+                                        context: context,
+                                        builder: (context) => AlertDialog(
+                                          title: const Text('Delete this event?'),
+                                          content: Text('Are you sure you want to delete "${event['name']}"?'),
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () => Navigator.pop(context),
+                                              child: const Text('Cancel'),
+                                            ),
+                                            TextButton(
+                                              onPressed: () async {
+                                                Navigator.pop(context);
+                                                await _deleteEvent(event['id'].toString());
+                                              },
+                                              child: const Text('Delete', style: TextStyle(color: Colors.red)),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ],
+                              )
+                            : null,
+                      ),
+                      // Tombol Review
+                      if (isRunner && isFinished && !isOwner)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                          child: SizedBox(
+                            width: double.infinity,
+                            child: _hasUserReviewedEvent(event['id'].toString())
+                                ? Container(
+                                    padding: const EdgeInsets.symmetric(vertical: 12),
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey[200],
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(Icons.check_circle, color: Colors.grey[600], size: 18),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          'Already Reviewed',
+                                          style: TextStyle(
+                                            color: Colors.grey[600],
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  )
+                                : ElevatedButton.icon(
+                                    onPressed: () => _handleAddReview(context, event),
+                                    icon: const Icon(Icons.rate_review, size: 18),
+                                    label: const Text('Add Review'),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFFA3E635),
+                                      foregroundColor: Colors.white,
+                                      padding: const EdgeInsets.symmetric(vertical: 12),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                    ),
+                                  ),
+                          ),
+                        ),
+                    ],
                   ),
-                ],
-              )
-            : null,
-      ),
-      // Tombol Review dipindah ke sini agar tidak merusak tata letak ListTile
-      if (isRunner && isFinished && !isOwner)
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          child: SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: () => _handleAddReview(context, event),
-              icon: const Icon(Icons.rate_review, size: 18),
-              label: const Text('Add Review'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFA3E635),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-            ),
-          ),
-        ),
-    ],
-  ),
-);
+                );
               },
             );
           }

@@ -8,25 +8,36 @@ import 'package:spot_runner_mobile/core/config/api_config.dart';
 class ReviewService {
   // Get all reviews atau filter by event_id
   static Future<ReviewEntry?> getAllReviews(
-    CookieRequest request, {
-    String? eventId,
-  }) async {
-    try {
-      String url = eventId != null 
-          ? ApiConfig.reviewsByEvent(eventId)
-          : ApiConfig.reviewsJson;
-
-      final response = await request.get(url);
-      
-      if (response['status'] == 'success') {
-        return ReviewEntry.fromJson(response);
-      }
-      return null;
-    } catch (e) {
-      print("Error getting reviews: $e");
-      return null;
+  CookieRequest request, {
+  String? eventId,
+}) async {
+  try {
+    String url;
+    
+    if (eventId != null) {
+      // Get reviews untuk event tertentu
+      url = '${ApiConfig.baseUrl}/api/reviews/?event_id=$eventId';
+    } else {
+      // Get SEMUA reviews (untuk cek user review status)
+      url = '${ApiConfig.baseUrl}/api/reviews/';
     }
+    
+    print('📡 Fetching reviews from: $url');
+    
+    final response = await request.get(url);
+    
+    print('📦 Response: $response');
+    
+    if (response['status'] == 'success') {
+      return ReviewEntry.fromJson(response);
+    }
+    
+    return null;
+  } catch (e) {
+    print('❌ Error in getAllReviews: $e');
+    return null;
   }
+}
 
   // Get reviews for specific event (dengan average rating)
   static Future<Map<String, dynamic>?> getEventReviews(
