@@ -3,7 +3,7 @@
 class ApiConfig {
   /// Runtime-aware base URL (localhost for web, 10.0.2.2 for Android emulator)
   static const String baseUrl =
-      'https://william-jonnatan-spotrunner.pbp.cs.ui.ac.id';
+      'http://localhost:8000';
   // static String get baseUrl => kIsWeb ? 'http://localhost:8000' : 'http://10.0.2.2:8000';
 
   /// Auth
