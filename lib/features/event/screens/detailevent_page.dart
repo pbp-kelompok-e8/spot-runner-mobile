@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'dart:async';
 import 'package:provider/provider.dart';
 import 'package:pbp_django_auth/pbp_django_auth.dart';
+import 'package:spot_runner_mobile/features/event/screens/dashboard_screen.dart';
 import 'package:spot_runner_mobile/features/event/screens/editevent_form.dart';
 import 'package:spot_runner_mobile/features/event/screens/testpage.dart';
 import 'package:spot_runner_mobile/core/config/api_config.dart'; 
@@ -213,8 +214,11 @@ class _EventDetailPageState extends State<EventDetailPage> {
               backgroundColor: Colors.green,
             ),
           );
-            Navigator.pop(context, true
-          );
+            Navigator.pushReplacement(
+              context, MaterialPageRoute(
+                builder: (context) => DashboardScreen(),
+              ),
+            );
         }
       } else {
         if (mounted) {

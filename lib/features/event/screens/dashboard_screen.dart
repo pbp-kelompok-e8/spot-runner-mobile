@@ -6,6 +6,7 @@ import 'package:spot_runner_mobile/core/config/api_config.dart';
 import 'package:spot_runner_mobile/core/models/event_entry.dart';
 import 'package:spot_runner_mobile/core/models/user_entry.dart';
 import 'package:spot_runner_mobile/core/widgets/left_drawer.dart';
+import 'package:spot_runner_mobile/features/event/screens/detailevent_page.dart';
 import 'package:spot_runner_mobile/features/event/screens/editevent_form.dart';
 import 'package:spot_runner_mobile/features/event/screens/event_form.dart';
 
@@ -465,7 +466,23 @@ class EventCard extends StatelessWidget {
     final String dynamicStatus = _calculateDynamicStatus(event.eventDate);
     final statusStyle = _getStatusStyle(dynamicStatus);
 
-    return Container(
+    return InkWell(
+    onTap: () async {
+      // Navigasi ke halaman detail
+      final result = await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => EventDetailPage(eventId: event.id.toString()),
+        ),
+      );
+
+      // Jika ada perubahan (edit/delete) di detail page, refresh dashboard
+      if ((result == true) && onRefresh != null) {
+        onRefresh!();
+      }
+    },
+    borderRadius: BorderRadius.circular(16),
+    child: Container(
       width: double.infinity,
       decoration: BoxDecoration(
         color: statusStyle['cardColor'],
@@ -633,6 +650,7 @@ class EventCard extends StatelessWidget {
           ),
         ],
       ),
+    )
     );
   }
 
